@@ -18,21 +18,20 @@
 
 #include "Client_Handler.h"
 #include "DB_Manag_Sys.h"
-#include "Protocols.h"
 
-char ACK_new_user[21]  = "...new user created!";
-char NACK_new_user[19] = "...new user failed";
-char ACK_in_user[11]   = "...logged!";
-char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-char ACK_out_user[15]  = "...logged out!";
-char NACK_out_user[23] = "...error: still logged";
 
 /*****************************************************************************************************/
 /*    UDP CLIENT HANDLER                                                                             */
 /*****************************************************************************************************/
 void udp_client_handler(int pipe_read, int pipe_write, uint16_t port) 
 {
-    printf("%s\n", NACK_in_user);
+    char ACK_new_user[21]  = "...new user created!";
+    char NACK_new_user[19] = "...new user failed";
+    char ACK_in_user[11]   = "...logged!";
+    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+    char ACK_out_user[15]  = "...logged out!";
+    char NACK_out_user[23] = "...error: still logged";
+
     int udp_fd, tcp_fd;
     ssize_t n_bytes;
     socklen_t len;
@@ -188,6 +187,13 @@ void udp_client_handler(int pipe_read, int pipe_write, uint16_t port)
 /*****************************************************************************************************/
 void tcp_client_handler(int pipe_read, int pipe_write, int tcp_fd, struct sockaddr_in * addr) 
 {
+    char ACK_new_user[21]  = "...new user created!";
+    char NACK_new_user[19] = "...new user failed";
+    char ACK_in_user[11]   = "...logged!";
+    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+    char ACK_out_user[15]  = "...logged out!";
+    char NACK_out_user[23] = "...error: still logged";
+    
     ssize_t n_bytes;
     socklen_t len;
     pid_t listener;

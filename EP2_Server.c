@@ -18,7 +18,6 @@
 
 #include "Client_Handler.h"
 #include "DB_Manag_Sys.h"
-#include "Protocols.h"
 
 /*
     TCP CLiente:  socket[] -> connect[] -> receive[]
@@ -31,6 +30,13 @@
 
 void master_processor(int player_rd, char * client_message)
 {
+    char ACK_new_user[21]  = "...new user created!";
+    char NACK_new_user[19] = "...new user failed";
+    char ACK_in_user[11]   = "...logged!";
+    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+    char ACK_out_user[15]  = "...logged out!";
+    char NACK_out_user[23] = "...error: still logged";
+
     unsigned char client_message_copy[64];
     unsigned char * user, * pass, * command, * token;
     char event[64];
@@ -145,7 +151,6 @@ void master_processor(int player_rd, char * client_message)
 /*****************************************************************************************************/
 int main(int argc, char ** argv)
 {
-    printf("%s\n", NACK_in_user);
     uint16_t port = (uint16_t)atoi(argv[1]);
     uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
     printf("Aux port: %d\n", aux_udp_port);
@@ -344,6 +349,13 @@ int main(int argc, char ** argv)
 
     close(udp_fd);
     close(listen_fd);
+
+    char ACK_new_user[21]  = "...new user created!";
+    char NACK_new_user[19] = "...new user failed";
+    char ACK_in_user[11]   = "...logged!";
+    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+    char ACK_out_user[15]  = "...logged out!";
+    char NACK_out_user[23] = "...error: still logged";
 
     while(1) 
     {

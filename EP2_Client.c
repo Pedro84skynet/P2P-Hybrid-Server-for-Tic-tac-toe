@@ -11,7 +11,6 @@
 #include <poll.h>
 
 #include "Hash_Game.h"
-#include "Protocols.h"
 
 
 struct client_info {
@@ -21,13 +20,6 @@ struct client_info {
     bool main;
 };
 
-char ACK_new_user[21]  = "...new user created!";
-char NACK_new_user[19] = "...new user failed";
-char ACK_in_user[11]   = "...logged!";
-char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-char ACK_out_user[15]  = "...logged out!";
-char NACK_out_user[23] = "...error: still logged";
-
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
 //     UDP Client: socket[] -> sendto[]
@@ -36,7 +28,13 @@ char NACK_out_user[23] = "...error: still logged";
 
 int main(int argc, char ** argv) 
 {
-    printf("%s\n", NACK_in_user);
+    char ACK_new_user[21]  = "...new user created!";
+    char NACK_new_user[19] = "...new user failed";
+    char ACK_in_user[11]   = "...logged!";
+    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+    char ACK_out_user[15]  = "...logged out!";
+    char NACK_out_user[23] = "...error: still logged";
+
     socklen_t len;
     ssize_t nbytes;
     int client_sockfd, listen_fd, player_fd;
