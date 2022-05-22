@@ -1,0 +1,84 @@
+MAC0352 - Redes de Computadores e Sistemas Distribuídos (2022)
+
+EP2 - Primeiro Semestre de 2022
+
+Nome: Daniel Yoshio Hotta
+NUSP: 9922700
+Nome: Pedro Fernandes
+NUSP: 5948611
+
+
+1.CONTEÚDO_____________________________________________________________________
+
+    Conteúdo do arquivo "ep2-daniel-pedro.tar"
+
+    EP1_broker_server.c (fonte)
+    Makefile
+    LEIAME
+    Apt.pdf 
+   
+
+2.INSTRUÇÕES___________________________________________________________________
+
+  Observações inicias:
+
+          A máquina cujo programa será executado deve ser compatível com
+          as principais funções GNU/Linux em especial as referidas pela
+          definição _GNU_SOURCE e as bibliotecas:
+
+        sys/types.h
+        sys/socket.h
+        sys/wait.h
+        unistd.h
+        netinet/in.h
+        sys/stat.h
+        fcntl.h
+        stdint.h
+        signal.h
+
+
+
+  2.1   Para gerar os códigos binários, abrir pasta desempacotada no shell e
+        digitar "make"
+
+          	Exemplo: ~/dir1/dir2 >$ make
+
+        Obs.: Para grande número de conexões é indicado acertos nas variáveis
+        ulimit 
+
+            Exemplo: ~/dir1/dir2 >$ ulimit -n  4096 && ulimit -s unlimited
+
+  2.2   Para rodar o binário digitar "./EP1_broker_server"
+
+          	Exemplo: ~/dir1/dir2 >$ ./EP1_broker_server
+
+
+  2.3   Como trata-se de um servidor mosquitto a porta padrão de uso é a 1883
+        não havendo necessidade de delimitação, contudo, caso houver um número
+        depois da chamada do programa:
+
+            Exemplo: ~/dir1/dir2 >$ ./EP1_broker_server 9003
+
+            Ele utilizará a porta indicada.
+
+        Obs.: o Wireshark é capaz de identificar os pacotes como "MQTT" pela 
+        porta 1883.
+
+  2.3   Para finalizar pressionar "Ctrl+C" no terminal.
+
+
+
+3.REFERÊNCIAS__________________________________________________________________
+
+
+    - Cooper, M. (2014). Advanced bash scripting guide: An in-depth exploration 
+    of the art of shell scripting (Vol. 1). Domínio público, 10 Mar 2014.
+    
+    - Kurose, J. and Ross, K., 2016. Computer Networking. Harlow, United 
+    Kingdom: Pearson Education Canada.
+
+    Sites:
+        Oasis:           docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html 
+        Wikipedia:       https://en.wikipedia.org 
+        Michael Kerrisk: man7.org 
+        Die(Dice):       https://linux.die.net/  
