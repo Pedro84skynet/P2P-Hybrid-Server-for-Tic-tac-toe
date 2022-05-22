@@ -17,6 +17,8 @@
 #include <poll.h>
 
 #include "Client_Handler.h"
+#include "DB_Manag_Sys.h"
+#include "Protocols.h"
 
 /*
     TCP CLiente:  socket[] -> connect[] -> receive[]
@@ -26,195 +28,126 @@
     UDP Servidor: socket[] -> bind[]             -> recvfrom[]
 */
 
-struct client_info {
-    char ip[16];
-    uint16_t port;
-    uint16_t P2P_port;
-    bool main;
-};
 
-void log_event(char *event) 
+void master_processor(int player_rd, char * client_message)
 {
-    FILE* log;
-    time_t s = time(NULL);
-    struct tm t = *localtime(&s);
-
-    log = fopen("log.txt", "a");
-    fprintf(log, "[%d//%02d//%02d - %02d:%02d:%02d]: %s\n",
-                t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, 
-                t.tm_hour, t.tm_min, t.tm_sec, event);
-    fclose(log);
-}
-int change_data(char *username, int cod) 
-{
-    char *token, *user, *password; 
-    int n_vic, is_on, in_game;
-    in_game = 2;
-    char line[64], line_tokenized[64];
-    int score;
-    FILE* fp_db;
-    FILE* fp_new_db;
-    fp_db = fopen("database.txt", "r");
-    fp_new_db = fopen("prov_database.txt", "a");
-    while (fgets(line, 64, fp_db))
+    unsigned char client_message_copy[64];
+    unsigned char * user, * pass, * command, * token;
+    char event[64];
+    printf("Master receive from player1_wr: %s\n", client_message);
+    strncpy(client_message_copy, client_message, strlen(client_message));
+    client_message_copy[strlen(client_message)] = '\0';
+    command = strtok(client_message_copy, " ");
+/*  NEW    _______________________________________________________________________________*/
+    if (!strncmp(command, "new", 3)) 
     {
-        line[strlen(line) - 1] = '\0'; 
-        printf("Reading line: %s\n", line);
-        strncpy(line_tokenized, line, strlen(line));
-        printf("line_tokenized line: %s\n", line_tokenized);
-        token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username) - 1))
+        printf("Master: receive NEW\n");
+        user = strtok(NULL, " ");
+        pass = strtok(NULL, " ");
+        printf("Master:     user %s\n", user);
+        printf("Master:     pass %s\n", pass);
+        if(insert_user(user, pass)) {
+            printf("Error: new user NOT created.\n");
+            write(player_rd, NACK_new_user, sizeof(NACK_new_user));
+        }
+        else 
         {
-            password = strtok(NULL, " ");
-            score = atoi(strtok(NULL, " "));
-            if (cod == 1)
-            {
-                score++;
-            }
-            is_on = atoi(strtok(NULL, " "));
-            if (cod == 2) 
-            {
-                is_on = (is_on == 0) ?  1 :  0;
-
-            }
-            in_game = atoi(strtok(NULL, "\n"));
-            if (cod == 3) 
-            {
-                in_game = (in_game == 0) ?  1 :  0;
-            }
-            printf("    score: %d, is_on: %d, in_game: %d\n",score, is_on, in_game);
-            bzero((void*) line, 64);
-            memset((void*) line, 0, 64);
-            sprintf(line, "%s %s %d %d %d", username, password, score, is_on, in_game );
-            printf("    new line in database: %s\n", line);
-            fprintf(fp_new_db, "%s\n", line);
+            sprintf(event,"new user %s created.", user);
+            log_event(event);
+            printf("Master: new user created.\n");
+            write(player_rd, ACK_new_user, sizeof(ACK_new_user));
         } 
+    }
+/*  PASS    ______________________________________________________________________________*/
+    else if (!strncmp(command, "pass", 4)) 
+    {
+        /* code */
+    }
+/*  IN    ________________________________________________________________________________*/
+    else if (!strncmp(command, "in", 2)) 
+    {
+        printf("Master: receive IN\n");
+        log_event("log requested.");
+        user = strtok(NULL, " ");
+        pass = strtok(NULL, " ");
+        printf("Master:     user %s\n", user);
+        printf("Master:     pass %s\n", pass);
+        if(log_user(user, pass)) {
+            printf("Error: username or password did NOT match.\n");
+            log_event("log denied: username or password did NOT match.");
+            write(player_rd, NACK_in_user, sizeof(NACK_in_user));
+        }
+        else 
+        {
+            sprintf(event,"user %s logged.", user);
+            log_event(event);
+            printf("Master: user logged.\n");
+            write(player_rd, ACK_in_user, sizeof(ACK_in_user));
+        }
+        int change_data(char *username, int cod); 
+    }
+/*  HALLOFFAME    ________________________________________________________________________*/
+    else if (!strncmp(command, "halloffame", 10)) 
+    {
+        /* code */
+    }
+/*  l    _________________________________________________________________________________*/
+    else if (!strncmp(command, "l", 1)) 
+    {
+        /* code */
+    }
+/*  CALL    ______________________________________________________________________________*/
+    else if (!strncmp(command, "pass", 4)) 
+    {
+        /* code */
+    }
+/*  PLAY    ______________________________________________________________________________*/
+    else if (!strncmp(command, "play", 4)) 
+    {
+        /* code */
+    }
+/*  DELAY    _____________________________________________________________________________*/
+    else if (!strncmp(command, "delay", 5)) 
+    {
+        /* code */
+    }
+/*  OVER    _____________________________________________________________________________*/
+    else if (!strncmp(command, "over", 4)) 
+    {
+        /* code */
+    }
+/*  OUT    _____________________________________________________________________________*/
+    else if (!strncmp(command, "out", 3)) 
+    {
+        user = strtok(NULL, " ");
+        if(change_data(user, 2))
+        {
+            sprintf(event,"Error: Database failed to logged out user %s.", user);
+            log_event(event);
+            write(player_rd, NACK_out_user, sizeof(NACK_out_user));
+        }
         else
         {
-            fprintf(fp_new_db, "%s\n", line);
+            sprintf(event,"user %s logged out.", user);
+            log_event(event);
+            write(player_rd, ACK_out_user, sizeof(ACK_out_user));
         }
-        memset((void*) line, 0, 64);
-        memset((void*) line_tokenized, 0, 64);
     }
-    fclose(fp_db);
-    fclose(fp_new_db);
-    while (remove("database.txt") != 0)
+/*  BYE    _____________________________________________________________________________*/
+    else if (!strncmp(command, "bye", 3)) 
     {
-        printf("Erro: arquivo %s não deletado.\n", "database.txt");
-        sleep(1);
-    }
-    printf("Arquivo %s  deletado.\n", "database.txt");
-    while (rename("prov_database.txt", "database.txt") != 0)
-    {
-        printf("Erro: arquivo %s não atualizado.\n", "database.txt");
-        sleep(1);
-    }
-    printf("Arquivo %s  atualizado.\n", "database.txt");
-    return 0;  
-}
-int change_pass(char *username, char *old_pass, char *new_pass) 
-{
-    char *token, *user, *password, *n_vic, *is_on, *in_game;
-    char line[64], line_tokenized[64];
-    FILE* fp_db;
-    FILE* fp_new_db;
-    fp_db = fopen("database.txt", "r");
-    fp_new_db = fopen("prov_database.txt", "a");
-    while (fgets(line, 64, fp_db))
-    {
-        line[strlen(line) - 1] = '\0'; 
-        printf("Reading line: %s\n", line);
-        strncpy(line_tokenized, line, strlen(line));
-        printf("line_tokenized line: %s\n", line_tokenized);
-        token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username) - 1))
-        {
-            token = strtok(NULL, " ");
-            if (strncmp(token, old_pass, strlen(old_pass) - 1))
-            {
-                printf("Password antigo incorreto!\n");
-                fclose(fp_db);
-                fclose(fp_new_db);
-                return 3;
-            }
-            else
-            {
-                printf("Password antigo correto!\n");
-                n_vic = strtok(NULL, " ");
-                is_on = strtok(NULL, " ");
-                in_game = strtok(NULL, " ");
-                sprintf(line, "%s %s %s %s %s", username, new_pass, n_vic, is_on, in_game);
-                line[strlen(line) - 1] = '\0'; 
-                printf("    new line in database: %s\n", line);
-                fprintf(fp_new_db, "%s\n", line);
-            }  
-        } 
-        else
-        {
-            fprintf(fp_new_db, "%s\n", line);
-        }
-    } 
-    if(remove("database.txt") == 0)
-    {
-        printf("Arquivo %s  deletado.\n", "database.txt");
-    } 
-    else
-    {
-        printf("Erro: arquivo %s não deletado.\n", "database.txt");
-        fclose(fp_db);
-        fclose(fp_new_db);
-        return 1;
-    }
-    if(rename("prov_database.txt", "database.txt") == 0)
-    {
-        printf("Arquivo %s  atualizado.\n", "database.txt");
-        fclose(fp_db);
-        fclose(fp_new_db);
-        return 0;
-    } 
-    else
-    {
-        printf("Erro: arquivo %s não atualizado.\n", "database.txt");
-        fclose(fp_db);
-        fclose(fp_new_db);
-        return 2;
+        /* code */
     }  
 }
-bool is_online(char *username) 
-{
-    FILE *fp;
-    char line[64];
-    char *token, *n_vic, *password, *is_on;
-    fp = fopen("database.txt", "r");
-    while (fgets(line, 64, fp))
-    {
-        token = strtok(line, " ");
-        if (!strncmp(username, token, sizeof(username)))
-        {
-            password = strtok(NULL, " ");
-            n_vic = strtok(NULL, " ");
-            is_on = strtok(NULL, " ");
-            if (!strncmp(is_on, "1", 1))
-            {
-                return true;
-            } 
-            else
-            {
-                return false;
-            }
-        }
-    }
-    return false;
-}
-
 
 /*****************************************************************************************************/
 /*    MAIN                                                                                           */
 /*****************************************************************************************************/
 int main(int argc, char ** argv)
 {
+    printf("%s\n", NACK_in_user);
     uint16_t port = (uint16_t)atoi(argv[1]);
-    uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60536 + 5000;
+    uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
     printf("Aux port: %d\n", aux_udp_port);
 
     int player1_wr[2];
@@ -318,7 +251,7 @@ int main(int argc, char ** argv)
             { 
                 printf("Server Poll: ...socket UDP chamando\n");
                 len = sizeof(serv_addr);
-                if(recvfrom(fd[0].fd, (void *) &CONNECT, sizeof(CONNECT), 0, 
+                if(recvfrom(udp_fd, (void *) &CONNECT, sizeof(CONNECT), 0, 
                                     (struct sockaddr *) &serv_addr, (socklen_t *) &len) == -1) 
                 {
                     printf("Error: udp_fd pool recvfrom failed");
@@ -327,7 +260,7 @@ int main(int argc, char ** argv)
                 if (CONNECT)
                 {
                     ACK_NACK = 1;
-                    if (sendto(fd[0].fd, (void *) &ACK_NACK, sizeof(ACK_NACK), 0, 
+                    if (sendto(udp_fd, (void *) &ACK_NACK, sizeof(ACK_NACK), 0, 
                                     (const struct sockaddr *) &serv_addr, len) == -1)
                     {
                         printf("Error: sendto failed");
@@ -340,10 +273,9 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     continue;
                 }
-                printf("    First UDP client ...sending new port\n");
-                if (n_clients) CHANGE_PORT = htons(aux_udp_port);
-                else CHANGE_PORT = 0;
-                if (sendto(fd[0].fd, (void *) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
+                if (n_clients) CHANGE_PORT = htons(aux_udp_port + 1);
+                else CHANGE_PORT = htons(aux_udp_port);;
+                if (sendto(udp_fd, (void *) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
                                 (const struct sockaddr *) &serv_addr, len) == -1)
                 {
                     printf("Error: sendto failed");
@@ -358,10 +290,9 @@ int main(int argc, char ** argv)
                 {
                     close(udp_fd);
                     close(listen_fd);
-                    n_clients = 2;
                     
-                    if(n_clients) udp_client_handler(player1_rd[0], player1_wr[1], aux_udp_port);
-                    else udp_client_handler(player2_rd[0], player2_wr[1], port);
+                    if(n_clients) udp_client_handler(player2_rd[0], player2_wr[1], aux_udp_port + 1);
+                    else udp_client_handler(player1_rd[0], player1_wr[1], aux_udp_port);
                     return 0;
                 }
                 n_clients++;
@@ -399,24 +330,27 @@ int main(int argc, char ** argv)
                 {
                     close(listen_fd);
                     close(udp_fd);
-                    n_clients = 2;
-                    if(!n_clients) tcp_client_handler(player1_rd[0], player1_wr[1], tcp_fd, &serv_addr);
-                    else tcp_client_handler(player2_rd[0], player2_wr[1], tcp_fd, &serv_addr);
+                    if(n_clients) tcp_client_handler(player2_rd[0], player2_wr[1], tcp_fd, &serv_addr);
+                    else tcp_client_handler(player1_rd[0], player1_wr[1], tcp_fd, &serv_addr);
                     return 0;
                 }
                 close(tcp_fd);
                 n_clients++;    
             }
         }
-
+        printf("Master aux: %d players ...bye!\n", n_clients);
+        return 0;
     }
-    
+
+    close(udp_fd);
+    close(listen_fd);
+
     while(1) 
     {
-        fd[0].fd = player1_rd[0];
+        fd[0].fd = player1_wr[0];
         fd[0].events = POLLIN;
 
-        fd[1].fd = player2_rd[0];
+        fd[1].fd = player2_wr[0];
         fd[1].events = POLLIN;
 
         ret = poll(fd, 2, 0);
@@ -424,19 +358,28 @@ int main(int argc, char ** argv)
             perror ("poll");
             return 1;
         }
-
-        if ((fd[0].revents & POLLIN) && fd[0].fd == player1_rd[0]) 
+         
+        if ((fd[0].revents == POLLIN) && fd[0].fd == player1_wr[0]) 
         {
-            printf("Master poll: pipe do Player1!\n");
             /* Atualiza banco de dados com requisições do 
-               processo do servidor referente a player 1*/
-        }
-        if ((fd[1].revents & POLLIN) && fd[1].fd == player2_rd[0])
-        {
+            processo do servidor referente a player 1*/
             printf("Master poll: pipe do Player1!\n");
+            read(player1_wr[0], client_message, sizeof(client_message));
+            master_processor(player1_rd[1], client_message);
+            memset(client_message, 0, sizeof(client_message));
+
+        }
+        else if ((fd[1].revents == POLLIN) && fd[1].fd == player2_wr[0])
+        {
+            printf("Master poll: pipe do Player2!\n");
             /* Atualiza banco de dados com requisições do 
                processo do servidor referente a player 2*/
+            read(player2_wr[0], client_message, sizeof(client_message));
+            master_processor(player2_rd[1], client_message);
+            memset(client_message, 0, sizeof(client_message));
         }
+    
+       
     }
 }
 
@@ -444,7 +387,19 @@ int main(int argc, char ** argv)
 
 BIBLIOGRAFIA
 
-https://tldp.org/HOWTO/TCP-Keepalive-HOWTO/programming.html
-https://www.codingunit.com/c-tutorial-deleting-and-renaming-a-file
+    - Cooper, M. (2014). Advanced bash scripting guide: An in-depth exploration 
+    of the art of shell scripting (Vol. 1). Domínio público, 10 Mar 2014.
+    
+    - Kurose, J. and Ross, K., 2016. Computer Networking. Harlow, United 
+    Kingdom: Pearson Education Canada.
+
+Sites:
+
+    Fabio Busatto:   https://tldp.org/HOWTO/TCP-Keepalive-HOWTO/programming.html
+    Codingunit:      https://www.codingunit.com/c-tutorial-deleting-and-renaming-a-file
+    Oasis:           https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html 
+    Wikipedia:       https://en.wikipedia.org 
+    Michael Kerrisk: https://man7.org 
+    Die(Dice):       https://linux.die.net/ 
 
 */

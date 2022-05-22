@@ -17,12 +17,22 @@
 #include <poll.h>
 
 #include "Client_Handler.h"
+#include "DB_Manag_Sys.h"
+#include "Protocols.h"
+
+char ACK_new_user[21]  = "...new user created!";
+char NACK_new_user[19] = "...new user failed";
+char ACK_in_user[11]   = "...logged!";
+char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+char ACK_out_user[15]  = "...logged out!";
+char NACK_out_user[23] = "...error: still logged";
 
 /*****************************************************************************************************/
 /*    UDP CLIENT HANDLER                                                                             */
 /*****************************************************************************************************/
 void udp_client_handler(int pipe_read, int pipe_write, uint16_t port) 
 {
+    printf("%s\n", NACK_in_user);
     int udp_fd, tcp_fd;
     ssize_t n_bytes;
     socklen_t len;
@@ -156,18 +166,17 @@ void udp_client_handler(int pipe_read, int pipe_write, uint16_t port)
                     Processa mensagem do listener, return client_message;
                 */
                 write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
-                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message)); // por enquanto, sender direto
+                memset(client_message, 0, sizeof(client_message));
             }
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {
-                read(pipe_read, (void *) client_message, (size_t) sizeof(client_message));
-                printf("Processador  recebeu do main: %s\n", client_message);
+                read(pipe_read, (void *) server_message, (size_t) sizeof(server_message));
+                printf("Processador  recebeu do main: %s\n", server_message);
                 /*
                     Processa mensagem do outro processo do servidor, return server_message;
                 */
-                strncpy(server_message, client_message, 64); //Para funcionar modelo OBS: --APAGAR
                 write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
-             
+                memset(server_message, 0, sizeof(server_message));
             }
         }
     }  
@@ -266,7 +275,7 @@ void tcp_client_handler(int pipe_read, int pipe_write, int tcp_fd, struct sockad
                 exit(EXIT_FAILURE);
             }
             printf("   .... Sender enviou mensagem para Cliente\n");
-            memset((void *)server_message, 0, sizeof(server_message));
+            memset((void *) server_message, 0, sizeof(server_message));
             printf("    n_bytes: %d\n", (int) n_bytes);
         }
         exit(EXIT_SUCCESS);
@@ -296,18 +305,17 @@ void tcp_client_handler(int pipe_read, int pipe_write, int tcp_fd, struct sockad
                     Processa mensagem do listener, return client_message;
                 */
                 write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
-                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message)); // por enquanto, sender direto
+                memset(client_message, 0, sizeof(client_message));
             }
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {
-                read(pipe_read, (void *) client_message, (size_t) sizeof(client_message));
-                printf("Processador  recebeu do main: %s\n", client_message);
+                read(pipe_read, (void *) server_message, (size_t) sizeof(server_message));
+                printf("Processador  recebeu do main: %s\n", server_message);
                 /*
                     Processa mensagem do outro processo do servidor, return server_message;
                 */
-                strncpy(server_message, client_message, 64); //Para funcionar modelo OBS: --APAGAR
                 write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
-             
+                memset(server_message, 0, sizeof(server_message));
             }
         }
     }  

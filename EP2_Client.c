@@ -11,6 +11,8 @@
 #include <poll.h>
 
 #include "Hash_Game.h"
+#include "Protocols.h"
+
 
 struct client_info {
     char ip[16];
@@ -19,6 +21,12 @@ struct client_info {
     bool main;
 };
 
+char ACK_new_user[21]  = "...new user created!";
+char NACK_new_user[19] = "...new user failed";
+char ACK_in_user[11]   = "...logged!";
+char NACK_in_user[47]  = "...not logged, username or password incorrect ";
+char ACK_out_user[15]  = "...logged out!";
+char NACK_out_user[23] = "...error: still logged";
 
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
@@ -28,6 +36,7 @@ struct client_info {
 
 int main(int argc, char ** argv) 
 {
+    printf("%s\n", NACK_in_user);
     socklen_t len;
     ssize_t nbytes;
     int client_sockfd, listen_fd, player_fd;
@@ -66,9 +75,21 @@ int main(int argc, char ** argv)
 
     if (!strncmp("UDP", argv[2], 3) || 
         !strncmp("udp", argv[2], 3) || 
-        !strncmp("Udp", argv[2], 3)) is_udp = true;
-    else is_udp = false;
-   
+        !strncmp("Udp", argv[2], 3)) 
+    {
+        is_udp = true;
+    }
+    else if (!strncmp("TCP", argv[2], 3) || 
+             !strncmp("tcp", argv[2], 3) || 
+             !strncmp("Tcp", argv[2], 3)) 
+    {
+        is_udp = false;
+    }
+    else
+    {
+        printf("Protocolo não utilizado.\n");
+        exit(EXIT_FAILURE);
+    } 
 
     if (is_udp)
     {
@@ -187,7 +208,6 @@ int main(int argc, char ** argv)
         n_bytes = 1;
         while (n_bytes) 
         {
-            // fazer o poll e enviar um ping caso timeout
 
             if (is_udp)
             {
@@ -231,12 +251,14 @@ int main(int argc, char ** argv)
         n_bytes = 1;
         while (n_bytes)
         {
+            // fazer o poll e enviar um ping caso timeout
+
             read(sender_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
             printf("Sender recebeu do pipe: %s\n", client_message);
 
             if (is_udp)
             {
-                n_bytes = sendto(client_sockfd, (void *) client_message, strlen(client_message), 0,
+                n_bytes = sendto(client_sockfd, (void *) client_message, sizeof(client_message), 0,
                     (struct sockaddr *) &serv_addr, (socklen_t ) sizeof(serv_addr));
                 if (n_bytes == -1)
                 {
@@ -246,7 +268,7 @@ int main(int argc, char ** argv)
             } 
             else 
             {
-                n_bytes = send(client_sockfd, (void *) client_message, strlen(client_message), 0);
+                n_bytes = send(client_sockfd, (void *) client_message, sizeof(client_message), 0);
                 if (n_bytes == -1)
                 {
                     printf("Erro: send failed\n");
@@ -271,22 +293,95 @@ int main(int argc, char ** argv)
         close(sender_pipe[0]);
         close(sender_pipe[1]);
         close(client_sockfd);
+
+        bool invalid_command = true;
+        bool need_loop = false;
         while (1)
         {
-            fgets(client_message, 64, stdin);
-            client_message[strlen(client_message) - 1] = '\0';
-            printf("Front-end Input: %s\n", client_message);
-            /*
-                    Aquarda e recebe input do client, return client_message;
-            */
-            write(front_end_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+            while(invalid_command) {
+                printf("JogoDaVelha> ");
+                fgets(user_input, 64, stdin);
+                user_input[strlen(user_input) - 1] = '\0'; 
+                printf("Front-end Input: %s\n", user_input);
+                strncpy(user_input_copy, user_input, strlen(user_input));
+                user_input_copy[strlen(user_input)] = '\0';
+                command = strtok(user_input_copy, " ");
+                client_message[strlen(client_message) - 1] = '\0';
+                if (!strncmp(command, "new", 3)) 
+                {
+                    invalid_command = false;
+                }
+                else if (!strncmp(command, "pass", 4)) 
+                { 
+                    invalid_command = false;
+                }
+                else if (!strncmp(command, "in", 2)) 
+                { 
+                    invalid_command = false;
+                }
+                else if (!strncmp(command, "halloffame", 10)) 
+                {
+                    printf("\n*** Hall of Fame ***\n\n");
+                    invalid_command = false;
+                    need_loop = true; 
+                }
+                else if (!strncmp(command, "l", 1)) 
+                {
+                    printf("\nUsuários Online\n");
+                    printf("(usuário) | (jogando)\n");
+                    invalid_command = false;
+                    need_loop = true; 
+                } 
+                else if (!strncmp(command, "call", 4)) 
+                { 
+                    invalid_command = false;
+                } 
+                else if (!strncmp(command, "play", 4)) 
+                { 
+                    invalid_command = false;
+                } 
+                else if (!strncmp(command, "delay", 5)) 
+                { 
+                    invalid_command = false;
+                } 
+                else if (!strncmp(command, "over", 4)) 
+                { 
+                    invalid_command = false;
+                }
+                else if (!strncmp(command, "out", 3)) 
+                { 
+                    invalid_command = false;
+                } 
+                else if (!strncmp(command, "bye", 3)) 
+                { 
+                    invalid_command = false;
+                    write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
+                    /* 
+                    code 
+                    */
+                    return 0;
+                } 
+                else
+                {
+                    printf("    Comando inválido ...Digite novamente!\n");
+                }
+            }
+            write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
             read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-            /*
-                    Recebe resposta do Main e retorna visualização para o cliente, return server_message;
-            */
+            if (need_loop )
+            {
+                int lines = atoi(server_message);
+                while (lines--)
+                {
+                    read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+                    printf("Front-end Output: %s\n", server_message);
+                } 
+            }
             printf("Front-end Output: %s\n", server_message);
-            memset((void *) client_message, 0, sizeof(client_message));
+            memset((void *) user_input, 0, sizeof(user_input));
             memset((void *) server_message, 0, sizeof(server_message));
+            invalid_command = true;
+            need_loop = false;
         }
         exit(EXIT_SUCCESS);
     }

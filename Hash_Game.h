@@ -1,5 +1,5 @@
-#ifndef HASH_GAME
-#define HASH_GAME
+#ifndef HASH_GAME_H
+#define HASH_GAME_H
 
 unsigned 
 char * hash_game(unsigned char * hashtable, unsigned char symbol, 

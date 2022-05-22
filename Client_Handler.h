@@ -1,5 +1,5 @@
-#ifndef CLIENT_HANDLER
-#define CLIENT_HANDLER
+#ifndef CLIENT_HANDLER_H
+#define CLIENT_HANDLER_H
 
 #define _GNU_SOURCE         
 #include <unistd.h>
@@ -7,6 +7,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
+struct client_info {
+    char ip[16];
+    uint16_t port;
+    uint16_t P2P_port;
+    bool main;
+};
 
 /*****************************************************************************************************/
 /*    UDP CLIENT HANDLER                                                                             */
