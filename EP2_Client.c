@@ -1,3 +1,24 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ./EP2_Client port_number protocol
+ *
+ *  - port_number: port number used to connect in EP2_Servidor.
+ *  - protocol   : "UDP" or "TCP"
+ *
+ *  DESCRIPTION
+ *
+ *  A brief description about what is implemented.
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - Don't forget to change var "serv_addr.sin_addr.s_addr" to your IP
+ *  -
+ *
+ ******************************************************************************/
+
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +30,8 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <poll.h>
+#include <signal.h>
+
 
 #include "Hash_Game.h"
 
@@ -28,6 +51,16 @@ struct client_info {
 
 int main(int argc, char ** argv) 
 {
+
+    // Message error
+    if (argc < 2) {
+        printf("usage: ./EP2_Client port_number protocol\n");
+        printf("examples with port = 8000:\n");
+        printf("    Protocol TCP:         ./EP2_Client 8000 TCP\n");
+        printf("    Protocol UDP:         ./EP2_Client 8000 UDP\n");
+        exit(0);
+    }
+
     char ACK_new_user[21]  = "...new user created!";
     char NACK_new_user[19] = "...new user failed";
     char ACK_in_user[11]   = "...logged!";
@@ -52,7 +85,9 @@ int main(int argc, char ** argv)
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(atoi(argv[1]));
+    //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
     serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
+
 
     char user_input[64], user_input_copy[64];
     //char * user_input_copy;
@@ -71,6 +106,14 @@ int main(int argc, char ** argv)
 
     bool is_udp;
 
+
+    /*****************************************************************************
+
+     Checks the protocol and if client connected to server
+
+    ******************************************************************************/
+
+
     if (!strncmp("UDP", argv[2], 3) || 
         !strncmp("udp", argv[2], 3) || 
         !strncmp("Udp", argv[2], 3)) 
@@ -88,7 +131,7 @@ int main(int argc, char ** argv)
         printf("Protocolo não utilizado.\n");
         exit(EXIT_FAILURE);
     } 
-
+/*  UDP    _______________________________________________________________________________*/
     if (is_udp)
     {
         if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
@@ -135,6 +178,7 @@ int main(int argc, char ** argv)
             }
         }
     }
+/*  TCP    _______________________________________________________________________________*/
     else
     {
         if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
@@ -164,6 +208,12 @@ int main(int argc, char ** argv)
             printf("    Alcançou o servidor.\n");
         }
     }
+
+    /*****************************************************************************
+
+     (Hotta: adicionarei dps)
+
+    ******************************************************************************/
 
     struct client_info player1;
 
@@ -354,9 +404,8 @@ int main(int argc, char ** argv)
                 { 
                     invalid_command = false;
                     write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
-                    /* 
-                    code 
-                    */
+                    printf ("Ending the game... Good bye!\n");
+                    sleep (2);
                     return 0;
                 } 
                 else
@@ -406,8 +455,19 @@ int main(int argc, char ** argv)
                 /*
                     Processa mensagem do front_end_pipe e envia para sender, return client_message;
                 */
-                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
-                usleep(50000);
+                if (!strncmp (client_message, "bye", 3)) {
+                    write (sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                    sleep (1);
+                    kill (sender, SIGKILL);
+                    kill (listener, SIGKILL);
+                    // front end terminates itself (return 0)
+                    return 0;
+                    
+                }
+                else {
+                    write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                    usleep(50000);
+                }
             }
             if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
             {
@@ -423,5 +483,3 @@ int main(int argc, char ** argv)
         }
     }
 } 
-
- 

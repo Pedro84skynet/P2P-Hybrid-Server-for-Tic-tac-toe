@@ -1,3 +1,22 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ./EP2_Server port_number
+ *
+ *  - port_number: port number used to connect in EP2_Servidor.
+ *
+ *  DESCRIPTION
+ *
+ *  A brief description about what is implemented.
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - Implement BYE and return safely
+ *  -
+ *
+ ******************************************************************************/
+
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +71,8 @@ void master_processor(int player_rd, char * client_message)
         pass = strtok(NULL, " ");
         printf("Master:     user %s\n", user);
         printf("Master:     pass %s\n", pass);
-        if(insert_user(user, pass)) {
+        if(insert_user(user, pass)) 
+        {
             printf("Error: new user NOT created.\n");
             write(player_rd, NACK_new_user, sizeof(NACK_new_user));
         }
@@ -414,4 +434,7 @@ Sites:
     Michael Kerrisk: https://man7.org 
     Die(Dice):       https://linux.die.net/ 
 
+
 */
+
+
