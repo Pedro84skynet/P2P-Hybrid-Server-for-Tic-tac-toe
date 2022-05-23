@@ -18,7 +18,7 @@
  *
  ******************************************************************************/
 
-
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include <signal.h>
+
 
 #include "Hash_Game.h"
 
@@ -50,6 +51,7 @@ struct client_info {
 
 int main(int argc, char ** argv) 
 {
+
     // Message error
     if (argc < 2) {
         printf("usage: ./EP2_Client port_number protocol\n");
@@ -83,7 +85,9 @@ int main(int argc, char ** argv)
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(atoi(argv[1]));
-    serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
+    //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
+    serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
+
 
     char user_input[64], user_input_copy[64];
     //char * user_input_copy;
@@ -102,11 +106,13 @@ int main(int argc, char ** argv)
 
     bool is_udp;
 
+
     /*****************************************************************************
 
      Checks the protocol and if client connected to server
 
     ******************************************************************************/
+
 
     if (!strncmp("UDP", argv[2], 3) || 
         !strncmp("udp", argv[2], 3) || 
@@ -125,7 +131,7 @@ int main(int argc, char ** argv)
         printf("Protocolo não utilizado.\n");
         exit(EXIT_FAILURE);
     } 
-
+/*  UDP    _______________________________________________________________________________*/
     if (is_udp)
     {
         if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
@@ -172,8 +178,7 @@ int main(int argc, char ** argv)
             }
         }
     }
-
-    // is_tcp
+/*  TCP    _______________________________________________________________________________*/
     else
     {
         if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
@@ -478,5 +483,3 @@ int main(int argc, char ** argv)
         }
     }
 } 
-
- 
