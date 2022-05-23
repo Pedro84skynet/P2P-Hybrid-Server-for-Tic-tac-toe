@@ -57,7 +57,7 @@ int log_user(char * username, char * password)
         }
         token = strtok(NULL, " ");
         printf("token: %s\n", token);
-        if (strncmp(token, password, strlen(password)))
+        if (strncmp(token, password, strlen(token)))
         {
             check = false;                 
         }
@@ -78,21 +78,22 @@ int log_user(char * username, char * password)
 
 int change_data(char *username, int cod) 
 {
-    char *token, *user, *password; 
-    int n_vic, is_on, in_game;
-    in_game = 2;
-    char line[64], line_tokenized[64];
-    int score;
     FILE* fp_db;
     FILE* fp_new_db;
+
+    char *token, *user, *password; 
+    int score,  is_on, in_game;
+    in_game = 2;
+    char line[64], line_tokenized[64];
+    
     fp_db = fopen("database.txt", "r");
     fp_new_db = fopen("prov_database.txt", "a");
     while (fgets(line, 64, fp_db))
     {
         line[strlen(line) - 1] = '\0'; 
-        printf("Reading line: %s\n", line);
+        printf("change_data: Reading line: %s\n", line);
         strncpy(line_tokenized, line, strlen(line));
-        printf("line_tokenized line: %s\n", line_tokenized);
+        printf("change_data: line_tokenized line: %s\n", line_tokenized);
         token = strtok(line_tokenized, " ");
         if (!strncmp(token, username, strlen(username) - 1))
         {
@@ -113,12 +114,8 @@ int change_data(char *username, int cod)
             {
                 in_game = (in_game == 0) ?  1 :  0;
             }
-            printf("    score: %d, is_on: %d, in_game: %d\n",score, is_on, in_game);
-            bzero((void*) line, 64);
-            memset((void*) line, 0, 64);
-            sprintf(line, "%s %s %d %d %d", username, password, score, is_on, in_game );
-            printf("    new line in database: %s\n", line);
-            fprintf(fp_new_db, "%s\n", line);
+            printf("change_data: New line in DataBase: %s %s %d %d %d\n", username, password, score, is_on, in_game);
+            fprintf(fp_new_db,"%s %s %d %d %d\n", username, password, score, is_on, in_game);
         } 
         else
         {
@@ -134,72 +131,71 @@ int change_data(char *username, int cod)
         printf("Erro: arquivo %s não deletado.\n", "database.txt");
         return 1; 
     }
-    printf("Arquivo %s  deletado.\n", "database.txt");
     if (rename("prov_database.txt", "database.txt") != 0)
     {
         printf("Erro: arquivo %s não atualizado.\n", "database.txt");
         return 1;
     }
-    printf("Arquivo %s  atualizado.\n", "database.txt");
     return 0;  
 }
 
 int change_pass(char *username, char *old_pass, char *new_pass) 
 {
-    char *token, *user, *password, *n_vic, *is_on, *in_game;
-    char line[64], line_tokenized[64];
     FILE* fp_db;
     FILE* fp_new_db;
+
+    char *user, *password, *n_vic, *is_on, *in_game;
+    char line[64], line_tokenized[64];
+    int cut;
+
     fp_db = fopen("database.txt", "r");
     fp_new_db = fopen("prov_database.txt", "a");
     while (fgets(line, 64, fp_db))
     {
         line[strlen(line) - 1] = '\0'; 
-        printf("Reading line: %s\n", line);
+        printf("change_pass: Reading line: %s\n", line);
         strncpy(line_tokenized, line, strlen(line));
-        printf("line_tokenized line: %s\n", line_tokenized);
-        token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username) - 1))
+        printf("change_pass: line_tokenized line: %s\n", line_tokenized);
+        user = strtok(line_tokenized, " ");
+        if (!strncmp(user, username, strlen(user)))
         {
-            token = strtok(NULL, " ");
-            if (strncmp(token, old_pass, strlen(old_pass) - 1))
+            password = strtok(NULL, " ");
+            if (strncmp(password, old_pass, strlen(old_pass)))
             {
-                printf("Password antigo incorreto!\n");
+                printf("change_pass: Password antigo incorreto!\n");
                 fclose(fp_db);
                 fclose(fp_new_db);
                 return 3;
             }
-            else
+            else  
             {
-                printf("Password antigo correto!\n");
+                printf("change_pass: Password antigo correto!\n");
                 n_vic = strtok(NULL, " ");
                 is_on = strtok(NULL, " ");
                 in_game = strtok(NULL, " ");
-                sprintf(line, "%s %s %s %s %s", username, new_pass, n_vic, is_on, in_game);
-                line[strlen(line) - 1] = '\0'; 
-                printf("    new line in database: %s\n", line);
-                fprintf(fp_new_db, "%s\n", line);
+                memset((void*) line, 0, 64);
+                printf("change_pass: new line in DataBase: %s %s %d %d %d\n", username, new_pass, atoi(n_vic), atoi(is_on), atoi(in_game));
+                fprintf(fp_new_db,"%s %s %d %d %d\n", username, new_pass, atoi(n_vic), atoi(is_on), atoi(in_game));
+
             }  
-        } 
-        else
+        }  
+        else 
         {
             fprintf(fp_new_db, "%s\n", line);
         }
+        memset((void*) line, 0, (size_t) 64);
+        memset((void*) line_tokenized, 0, (size_t) 64); 
     } 
-    if(remove("database.txt") == 0)
-    {
-        printf("Arquivo %s  deletado.\n", "database.txt");
-    } 
-    else
+    if(remove("database.txt"))
     {
         printf("Erro: arquivo %s não deletado.\n", "database.txt");
         fclose(fp_db);
         fclose(fp_new_db);
         return 1;
-    }
+    } 
     if(rename("prov_database.txt", "database.txt") == 0)
     {
-        printf("Arquivo %s  atualizado.\n", "database.txt");
+        printf("change_pass: Arquivo %s  atualizado.\n", "database.txt");
         fclose(fp_db);
         fclose(fp_new_db);
         return 0;

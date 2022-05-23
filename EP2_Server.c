@@ -35,7 +35,7 @@
 /*man pool*/
 #include <poll.h>
 
-#include "Client_Handler.h"
+#include "Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
 
 /*
@@ -46,8 +46,10 @@
     UDP Servidor: socket[] -> bind[]             -> recvfrom[]
 */
 
-
-void master_processor(int player_rd, char * client_message)
+/*****************************************************************************************************/
+/*    MAIN                                                                                           */
+/*****************************************************************************************************/
+int main(int argc, char ** argv)
 {
     char ACK_new_user[21]  = "...new user created!";
     char NACK_new_user[19] = "...new user failed";
@@ -56,138 +58,6 @@ void master_processor(int player_rd, char * client_message)
     char ACK_out_user[15]  = "...logged out!";
     char NACK_out_user[23] = "...error: still logged";
 
-    unsigned char client_message_copy[64];
-    unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
-    char event[64];
-    printf("Master receive from player1_wr: %s\n", client_message);
-    strncpy(client_message_copy, client_message, strlen(client_message));
-    client_message_copy[strlen(client_message)] = '\0';
-    command = strtok(client_message_copy, " ");
-/*  NEW    _______________________________________________________________________________*/
-    if (!strncmp(command, "new", 3)) 
-    {
-        printf("Master: receive NEW\n");
-        log_event("Received request for new user");
-        user = strtok(NULL, " ");
-        pass = strtok(NULL, " ");
-        printf("Master:     user %s\n", user);
-        printf("Master:     pass %s\n", pass);
-        if(insert_user(user, pass)) 
-        {
-            printf("Error: new user NOT created.\n");
-            write(player_rd, NACK_new_user, sizeof(NACK_new_user));
-        }
-        else 
-        {
-            sprintf(event,"new user %s created.", user);
-            log_event(event);
-            printf("Master: new user created.\n");
-            write(player_rd, ACK_new_user, sizeof(ACK_new_user));
-        } 
-    }
-/*  PASS    ______________________________________________________________________________*/
-    else if (!strncmp(command, "pass", 4)) 
-    {
-        log_event("Received request for new password");
-        old_pass = strtok(NULL, " ");
-        new_pass = strtok(NULL, " ");
-        user = strtok(NULL, " ");
-        if (change_pass(user, old_pass, new_pass))
-        {
-            printf("Error: new password NOT created.\n");
-            log_event("Error: new password NOT created.");
-            write(player_rd, NACK_new_user, sizeof(NACK_new_user));
-        }
-        else
-        {
-            sprintf(event,"new password for user %s created.", user);
-            log_event(event);
-            printf("Master: new user created.\n");
-            write(player_rd, ACK_new_user, sizeof(ACK_new_user));
-        }
-    }
-/*  IN    ________________________________________________________________________________*/
-    else if (!strncmp(command, "in", 2)) 
-    {
-        printf("Master: receive IN\n");
-        log_event("log requested.");
-        user = strtok(NULL, " ");
-        pass = strtok(NULL, " ");
-        printf("Master:     user %s\n", user);
-        printf("Master:     pass %s\n", pass);
-        if(log_user(user, pass)) {
-            printf("Error: username or password did NOT match.\n");
-            log_event("log denied: username or password did NOT match.");
-            write(player_rd, NACK_in_user, sizeof(NACK_in_user));
-        }
-        else 
-        {
-            sprintf(event,"user %s logged.", user);
-            log_event(event);
-            printf("Master: user logged.\n");
-            write(player_rd, ACK_in_user, sizeof(ACK_in_user));
-        }
-        int change_data(char *username, int cod); 
-    }
-/*  HALLOFFAME    ________________________________________________________________________*/
-    else if (!strncmp(command, "halloffame", 10)) 
-    {
-        /* code */
-    }
-/*  l    _________________________________________________________________________________*/
-    else if (!strncmp(command, "l", 1)) 
-    {
-        /* code */
-    }
-/*  CALL    ______________________________________________________________________________*/
-    else if (!strncmp(command, "pass", 4)) 
-    {
-        /* code */
-    }
-/*  PLAY    ______________________________________________________________________________*/
-    else if (!strncmp(command, "play", 4)) 
-    {
-        /* code */
-    }
-/*  DELAY    _____________________________________________________________________________*/
-    else if (!strncmp(command, "delay", 5)) 
-    {
-        /* code */
-    }
-/*  OVER    _____________________________________________________________________________*/
-    else if (!strncmp(command, "over", 4)) 
-    {
-        /* code */
-    }
-/*  OUT    _____________________________________________________________________________*/
-    else if (!strncmp(command, "out", 3)) 
-    {
-        user = strtok(NULL, " ");
-        if(change_data(user, 2))
-        {
-            sprintf(event,"Error: Database failed to logged out user %s.", user);
-            log_event(event);
-            write(player_rd, NACK_out_user, sizeof(NACK_out_user));
-        }
-        else
-        {
-            sprintf(event,"user %s logged out.", user);
-            log_event(event);
-            write(player_rd, ACK_out_user, sizeof(ACK_out_user));
-        }
-    }
-/*  BYE    _____________________________________________________________________________*/
-    else if (!strncmp(command, "bye", 3)) 
-    {
-        /* code */
-    }  
-}
-
-/*****************************************************************************************************/
-/*    MAIN                                                                                           */
-/*****************************************************************************************************/
-int main(int argc, char ** argv)
-{
     uint16_t port = (uint16_t)atoi(argv[1]);
     uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
     printf("Aux port: %d\n", aux_udp_port);
@@ -264,7 +134,7 @@ int main(int argc, char ** argv)
     struct client_info player2;
 
     socklen_t len;
-    ssize_t nbytes;
+    ssize_t nbytes; 
     unsigned char client_message[64];
 
     pid_t master;
@@ -333,7 +203,11 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     close(listen_fd);
                     
-                    if(n_clients) client_handler(true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
+                    if(n_clients)
+                    {
+
+                        client_handler(true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
+                    }
                     else client_handler(true, player1_rd[0], player1_wr[1], aux_udp_port, 0);
 
                     return 0;
@@ -389,13 +263,6 @@ int main(int argc, char ** argv)
     close(udp_fd);
     close(listen_fd);
 
-    char ACK_new_user[21]  = "...new user created!";
-    char NACK_new_user[19] = "...new user failed";
-    char ACK_in_user[11]   = "...logged!";
-    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-    char ACK_out_user[15]  = "...logged out!";
-    char NACK_out_user[23] = "...error: still logged";
-
     while(1) 
     {
         fd[0].fd = player1_wr[0];
@@ -416,8 +283,9 @@ int main(int argc, char ** argv)
             processo do servidor referente a player 1*/
             printf("Master poll: pipe do Player1!\n");
             read(player1_wr[0], client_message, sizeof(client_message));
-            master_processor(player1_rd[1], client_message);
-            memset(client_message, 0, sizeof(client_message));
+            printf("Master read from player1_wr[0]: %s\n", client_message);
+            master_handler(player1_rd[1], client_message);
+            memset(client_message, 0, (size_t) sizeof(client_message));
 
         }
         else if ((fd[1].revents == POLLIN) && fd[1].fd == player2_wr[0])
@@ -426,11 +294,10 @@ int main(int argc, char ** argv)
             /* Atualiza banco de dados com requisições do 
                processo do servidor referente a player 2*/
             read(player2_wr[0], client_message, sizeof(client_message));
-            master_processor(player2_rd[1], client_message);
+            printf("Master read from player1_wr[0]: %s\n", client_message);
+            master_handler(player2_rd[1], client_message);
             memset(client_message, 0, sizeof(client_message));
-        }
-    
-       
+        } 
     }
 }
 
