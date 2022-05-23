@@ -17,9 +17,15 @@ int log_user(char * username, char * password);
 int change_data(char *username, int cod); 
 
 /*    change_pass: change a old password from a given username to a new one.    */
-int change_pass(char *username, char *old_pass, char *new_pass); 
+int change_pass(char * username, char * old_pass, char * new_pass); 
 
 /*    is_online: returns the info if a given player is online    */
 bool is_online(char *username); 
+
+/*    halloffame_sender: returns the list of user's score*/
+int halloffame_sender(int pipe);
+
+/*    l_sender: returns the list of user's online an if they are playing*/
+int l_sender(int pipe);
 
 #endif

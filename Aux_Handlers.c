@@ -1,3 +1,21 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ./EP2_Server port_number protocol
+ *
+ *  - port_number: port number used to connect in EP2_Servidor.
+ *  - protocol   : "UDP" or "TCP"
+ *
+ *  DESCRIPTION
+ *
+ *  Auxiliars Functions for the server to handle requests
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - 
+ *
+ ******************************************************************************/
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,21 +37,30 @@
 #include "Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
 
-/******************************************************************************/
-/*    MASTER HANDLER                                                        */
-/******************************************************************************/
+char ACK_new_user[21]        = "...new user created!";
+char NACK_new_user[19]       = "...new user failed";
+char ACK_in_user[11]         = "...logged!";
+char NACK_in_user[47]        = "...not logged, username or password incorrect ";
+char ACK_newpass_user[25]    = "...new password created!";
+char NACK_newpass_user[35]   = "...error: new password not created";
+char ACK_out_user[15]        = "...logged out!";
+char NACK_out_user[23]       = "...error: still logged";
+char ACK_bye_user[8]         = "...bye!";
+char NACK_already_logged[19] = "...Already Logged!";
+char NACK_not_logged[26]     = "...you need to be logged!";
+char ACK_hallofame[21]       = "********************";
+char NACK_hallofame[30]      = "...hall of fame not available";
+char ACK_online_l[13]        = "...have fun!";
+char NACK_online_l[29]       = "...online list not available";
+
+/*****************************************************************************************************/
+/*                                                                                                   */
+/*    MASTER HANDLER                                                                                 */
+/*                                                                                                   */
+/*****************************************************************************************************/
 void master_handler(int player_rd, char * client_message)
 {
     printf("master_handler receive: %s\n", client_message);
-    char ACK_new_user[21]      = "...new user created!";
-    char NACK_new_user[19]     = "...new user failed";
-    char ACK_in_user[11]       = "...logged!";
-    char NACK_in_user[47]      = "...not logged, username or password incorrect ";
-    char ACK_newpass_user[25]  = "...new password created!";
-    char NACK_newpass_user[35] = "...error: new password not created";
-    char ACK_out_user[15]      = "...logged out!";
-    char NACK_out_user[23]     = "...error: still logged";
-
     unsigned char client_message_copy[64];
     unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
     char event[64];
@@ -41,7 +68,7 @@ void master_handler(int player_rd, char * client_message)
     strncpy(client_message_copy, client_message, strlen(client_message));
     client_message_copy[strlen(client_message)] = '\0';
     command = strtok(client_message_copy, " ");
-/*  NEW    _______________________________________________________________________________*/
+/*  NEW    ___________________________________________________________________*/
     if (!strncmp(command, "new", 3)) 
     {
         printf("Master: receive NEW\n");
@@ -63,7 +90,7 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_new_user, sizeof(ACK_new_user));
         } 
     }
-/*  PASS    ______________________________________________________________________________*/
+/*  PASS    __________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
     {
         log_event("Received request for new password");
@@ -86,7 +113,7 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_newpass_user, sizeof(ACK_newpass_user));
         }
     }
-/*  IN    ________________________________________________________________________________*/
+/*  IN    ____________________________________________________________________*/
     else if (!strncmp(command, "in", 2)) 
     {
         printf("Master: receive IN\n");
@@ -109,37 +136,55 @@ void master_handler(int player_rd, char * client_message)
         }
         int change_data(char *username, int cod); 
     }
-/*  HALLOFFAME    ________________________________________________________________________*/
+/*  HALLOFFAME    ____________________________________________________________*/
     else if (!strncmp(command, "halloffame", 10)) 
     {
-        /* code */
+        if(halloffame_sender(player_rd)) {
+            printf("Error: hall of fame not available. Not sended.\n");
+            log_event("Error: hall of fame not available. Not sended.\n");
+            write(player_rd, NACK_hallofame, sizeof(NACK_hallofame));
+        } 
+        else
+        {
+            log_event("sending a hall of fame list.");
+            write(player_rd, ACK_hallofame, sizeof(ACK_hallofame));
+        }
     }
-/*  l    _________________________________________________________________________________*/
+/*  l    _____________________________________________________________________*/ 
     else if (!strncmp(command, "l", 1)) 
     {
-        /* code */
+        if(l_sender(player_rd)) {
+            printf("Error: online list not available. Not sended.\n");
+            log_event("Error: online list not available. Not sended.\n");
+            write(player_rd, NACK_online_l, sizeof(NACK_online_l));
+        } 
+        else
+        {
+            log_event("sending a online list.");
+            write(player_rd, ACK_online_l, sizeof(ACK_online_l));
+        }
     }
-/*  CALL    ______________________________________________________________________________*/
+/*  CALL    __________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
     {
         /* code */
     }
-/*  PLAY    ______________________________________________________________________________*/
+/*  PLAY    __________________________________________________________________*/
     else if (!strncmp(command, "play", 4)) 
     {
         /* code */
     }
-/*  DELAY    _____________________________________________________________________________*/
+/*  DELAY    _________________________________________________________________*/
     else if (!strncmp(command, "delay", 5)) 
     {
         /* code */
     }
-/*  OVER    _____________________________________________________________________________*/
+/*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
         /* code */
     }
-/*  OUT    _____________________________________________________________________________*/
+/*  OUT    ___________________________________________________________________*/
     else if (!strncmp(command, "out", 3)) 
     {
         user = strtok(NULL, " ");
@@ -158,7 +203,7 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_out_user, sizeof(ACK_out_user));
         }
     }
-/*  BYE    _____________________________________________________________________________*/
+/*  BYE    ___________________________________________________________________*/
     else if (!strncmp(command, "bye", 3)) 
     {
         user = strtok(NULL, " ");
@@ -175,20 +220,13 @@ void master_handler(int player_rd, char * client_message)
 
 
 /*****************************************************************************************************/
+/*                                                                                                   */
 /*    CLIENT HANDLER                                                                                 */
+/*                                                                                                   */
 /*****************************************************************************************************/
+
 int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd) 
 {
-    char ACK_new_user[21]  = "...new user created!";
-    char NACK_new_user[19] = "...new user failed";
-    char ACK_in_user[11]   = "...logged!";
-    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-    char ACK_out_user[15]  = "...logged out!";
-    char NACK_out_user[23] = "...error: still logged";
-    char ACK_bye_user[8]  = "...bye!";
-    char NACK_already_logged[19] = "...Already Logged!";
-    char NACK_not_logged[26] = "...you need to be logged!";
-
     int udp_fd;
     ssize_t n_bytes;
     socklen_t len;
@@ -384,7 +422,9 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     {
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
-                        printf("[client_message_processed: %s len: %ld]\n", client_message_processed, strlen(client_message_processed));
+                        printf("[client_message_processed: %s len: %ld]\n", 
+                                    client_message_processed, 
+                                    strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, 
                                 (size_t) strlen(client_message_processed)); 
                         memset(client_message_processed, 0, sizeof(client_message_processed));
@@ -413,6 +453,21 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     kill (sender, SIGKILL);
                     kill (listener, SIGKILL);
                     return 0;
+                }
+            /*  L    _________________________________________________________________________________*/
+            /*  HALLOFFAME    ________________________________________________________________________*/
+            /*  Must be logged to request.                                                            */
+                else if (!strncmp(command, "l", 1) || 
+                         !strncmp(command, "halloffame" , 10))
+                {
+                    if(logged) 
+                    {
+                        write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
+                    }
+                    else
+                    {
+                        write(sender_pipe[1], (void *) NACK_not_logged, (size_t) sizeof(NACK_not_logged));
+                    }
                 }
                 else
                 {

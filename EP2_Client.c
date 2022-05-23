@@ -43,6 +43,22 @@ struct client_info {
     bool main;
 };
 
+char ACK_new_user[21]        = "...new user created!";
+char NACK_new_user[19]       = "...new user failed";
+char ACK_in_user[11]         = "...logged!";
+char NACK_in_user[47]        = "...not logged, username or password incorrect ";
+char ACK_newpass_user[25]    = "...new password created!";
+char NACK_newpass_user[35]   = "...error: new password not created";
+char ACK_out_user[15]        = "...logged out!";
+char NACK_out_user[23]       = "...error: still logged";
+char ACK_bye_user[8]         = "...bye!";
+char NACK_already_logged[19] = "...Already Logged!";
+char NACK_not_logged[26]     = "...you need to be logged!";
+char ACK_hallofame[21]       = "********************";
+char NACK_hallofame[30]      = "...hall of fame not available";
+char ACK_online_l[13]        = "...have fun!";
+char NACK_online_l[29]       = "...online list not available";
+
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
 //     UDP Client: socket[] -> sendto[]
@@ -60,13 +76,6 @@ int main(int argc, char ** argv)
         printf("    Protocol UDP:         ./EP2_Client 8000 UDP\n");
         exit(0);
     }
-
-    char ACK_new_user[21]  = "...new user created!";
-    char NACK_new_user[19] = "...new user failed";
-    char ACK_in_user[11]   = "...logged!";
-    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-    char ACK_out_user[15]  = "...logged out!";
-    char NACK_out_user[23] = "...error: still logged";
 
     socklen_t len;
     ssize_t nbytes;
@@ -353,51 +362,62 @@ int main(int argc, char ** argv)
                 user_input_copy[strlen(user_input)] = '\0';
                 command = strtok(user_input_copy, " ");
                 client_message[strlen(client_message) - 1] = '\0';
+            /*  NEW    ___________________________________________________________________*/
                 if (!strncmp(command, "new", 3)) 
                 {
                     invalid_command = false;
                 }
+            /*  PASS    __________________________________________________________________*/
                 else if (!strncmp(command, "pass", 4)) 
                 { 
                     invalid_command = false;
                 }
+            /*  IN    ____________________________________________________________________*/
                 else if (!strncmp(command, "in", 2)) 
                 { 
                     invalid_command = false;
                 }
+            /*  HALLOFFAME    ____________________________________________________________*/
                 else if (!strncmp(command, "halloffame", 10)) 
                 {
                     printf("\n*** Hall of Fame ***\n\n");
                     invalid_command = false;
                     need_loop = true; 
                 }
+            /*  L    _____________________________________________________________________*/
                 else if (!strncmp(command, "l", 1)) 
                 {
                     printf("\nUsuários Online\n");
                     printf("(usuário) | (jogando)\n");
                     invalid_command = false;
                     need_loop = true; 
-                } 
+                }
+            /*  CALL    __________________________________________________________________*/ 
                 else if (!strncmp(command, "call", 4)) 
                 { 
                     invalid_command = false;
                 } 
+            /*  PLAY    __________________________________________________________________*/
                 else if (!strncmp(command, "play", 4)) 
                 { 
                     invalid_command = false;
-                } 
+                }
+            /*  DELAY    _________________________________________________________________*/ 
                 else if (!strncmp(command, "delay", 5)) 
                 { 
                     invalid_command = false;
-                } 
+                }
+            /*  OVER    __________________________________________________________________*/ 
                 else if (!strncmp(command, "over", 4)) 
                 { 
                     invalid_command = false;
                 }
+            /*  OUT    ___________________________________________________________________*/
                 else if (!strncmp(command, "out", 3)) 
                 { 
                     invalid_command = false;
-                } 
+                }
+            /*  BYE    ___________________________________________________________________*/
                 else if (!strncmp(command, "bye", 3)) 
                 { 
                     invalid_command = false;
@@ -406,23 +426,35 @@ int main(int argc, char ** argv)
                     sleep (2);
                     return 0;
                 } 
+            /*  ELSE    __________________________________________________________________*/
                 else
                 {
                     printf("    Comando inválido ...Digite novamente!\n");
                 }
             }
             write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
-            read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-            if (need_loop )
+            if (need_loop)
             {
-                int lines = atoi(server_message);
-                while (lines--)
+                read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+                printf("    %s\n", server_message);
+                if (!strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged))) 
+                {
+                    need_loop = false;
+                    continue;
+                }
+                while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
+                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
                 {
                     read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                    printf("Front-end Output: %s\n", server_message);
+                    printf("    %s\n", server_message);
                 } 
+                need_loop = false;
             }
-            printf("Front-end Output: %s\n", server_message);
+            else
+            {
+                read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+                printf("Front-end Output: %s\n", server_message);
+            }
             memset((void *) user_input, 0, sizeof(user_input));
             memset((void *) server_message, 0, sizeof(server_message));
             invalid_command = true;

@@ -235,3 +235,64 @@ bool is_online(char *username)
     }
     return false;
 }
+
+int halloffame_sender(int pipe)
+{
+    FILE * fp;
+    char line[64];
+    char *token, *score, *user, *pass; 
+    if ((fp = fopen("database.txt", "r")) == 0)
+    {
+        printf("    Banco de dados inexistente.");
+        return 1;
+    }
+    while (fgets(line, 64, fp))
+    {
+        user = strtok(line, " ");
+        pass = strtok(NULL, " ");
+        score = strtok(NULL, " ");
+        sprintf(line, "%s %s", user, score);
+        write(pipe, (void *) line, (size_t) sizeof(line));
+        printf("halloffame_sender: line sended: %s strlen: %ld\n",line, strlen(line));
+        memset((void *)line, 0, 64);
+    }
+    fclose(fp);
+    return 0;
+}
+
+int l_sender(int pipe) 
+{
+    FILE * fp;
+    char line[64];
+    char *user, *pass, *n_vic;
+    int is_on, in_game;
+    if ((fp = fopen("database.txt", "r")) == 0)
+    {
+        printf("    Banco de dados inexistente.");
+        return 1;
+    }
+    while (fgets(line, 64, fp))
+    {
+        user = strtok(line, " ");
+        pass = strtok(NULL, " ");
+        n_vic = strtok(NULL, " ");
+        is_on = atoi(strtok(NULL, " "));
+        in_game = atoi(strtok(NULL, " "));
+        if (is_on)
+        {
+            if (in_game)
+            {
+                sprintf(line, "%s | sim", user);
+            }
+            else
+            {
+                sprintf(line, "%s | não", user);
+            }   
+            write(pipe, (void *) line, (size_t) sizeof(line));
+            printf("l_sender: line sended: %s strlen: %ld\n",line, strlen(line));
+        }
+        memset((void *)line, 0, 64);
+    }
+    fclose(fp);
+    return 0;
+}
