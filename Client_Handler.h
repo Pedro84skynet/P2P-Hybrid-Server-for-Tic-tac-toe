@@ -16,9 +16,9 @@ struct client_info {
 };
 
 /*****************************************************************************************************/
-/*    UDP CLIENT HANDLER                                                                             */
+/*    CLIENT HANDLER                                                                                 */
 /*****************************************************************************************************/
-void udp_client_handler(int pipe_read, int pipe_write, uint16_t port);
+void client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd);
 
 /*****************************************************************************************************/
 /*    TCP CLIENT HANDLER                                                                             */

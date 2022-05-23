@@ -38,7 +38,7 @@ void master_processor(int player_rd, char * client_message)
     char NACK_out_user[23] = "...error: still logged";
 
     unsigned char client_message_copy[64];
-    unsigned char * user, * pass, * command, * token;
+    unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
     char event[64];
     printf("Master receive from player1_wr: %s\n", client_message);
     strncpy(client_message_copy, client_message, strlen(client_message));
@@ -48,6 +48,7 @@ void master_processor(int player_rd, char * client_message)
     if (!strncmp(command, "new", 3)) 
     {
         printf("Master: receive NEW\n");
+        log_event("Received request for new user");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
         printf("Master:     user %s\n", user);
@@ -67,7 +68,23 @@ void master_processor(int player_rd, char * client_message)
 /*  PASS    ______________________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
     {
-        /* code */
+        log_event("Received request for new password");
+        old_pass = strtok(NULL, " ");
+        new_pass = strtok(NULL, " ");
+        user = strtok(NULL, " ");
+        if (change_pass(user, old_pass, new_pass))
+        {
+            printf("Error: new password NOT created.\n");
+            log_event("Error: new password NOT created.");
+            write(player_rd, NACK_new_user, sizeof(NACK_new_user));
+        }
+        else
+        {
+            sprintf(event,"new password for user %s created.", user);
+            log_event(event);
+            printf("Master: new user created.\n");
+            write(player_rd, ACK_new_user, sizeof(ACK_new_user));
+        }
     }
 /*  IN    ________________________________________________________________________________*/
     else if (!strncmp(command, "in", 2)) 
@@ -296,8 +313,9 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     close(listen_fd);
                     
-                    if(n_clients) udp_client_handler(player2_rd[0], player2_wr[1], aux_udp_port + 1);
-                    else udp_client_handler(player1_rd[0], player1_wr[1], aux_udp_port);
+                    if(n_clients) client_handler(true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
+                    else client_handler(true, player1_rd[0], player1_wr[1], aux_udp_port, 0);
+
                     return 0;
                 }
                 n_clients++;
@@ -335,8 +353,9 @@ int main(int argc, char ** argv)
                 {
                     close(listen_fd);
                     close(udp_fd);
-                    if(n_clients) tcp_client_handler(player2_rd[0], player2_wr[1], tcp_fd, &serv_addr);
-                    else tcp_client_handler(player1_rd[0], player1_wr[1], tcp_fd, &serv_addr);
+                    if(n_clients) client_handler(false, player2_rd[0], player2_wr[1], 0, tcp_fd);
+                    else client_handler(false, player1_rd[0], player1_wr[1], 0, tcp_fd);
+
                     return 0;
                 }
                 close(tcp_fd);
