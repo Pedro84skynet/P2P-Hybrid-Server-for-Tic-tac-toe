@@ -32,32 +32,9 @@
 #include <poll.h>
 #include <signal.h>
 
-
+#include "C_Aux_Handlers.h"
 #include "Hash_Game.h"
 
-
-struct client_info {
-    char ip[16];
-    uint16_t port;
-    uint16_t P2P_port;
-    bool main;
-};
-
-char ACK_new_user[21]        = "...new user created!";
-char NACK_new_user[19]       = "...new user failed";
-char ACK_in_user[11]         = "...logged!";
-char NACK_in_user[47]        = "...not logged, username or password incorrect ";
-char ACK_newpass_user[25]    = "...new password created!";
-char NACK_newpass_user[35]   = "...error: new password not created";
-char ACK_out_user[15]        = "...logged out!";
-char NACK_out_user[23]       = "...error: still logged";
-char ACK_bye_user[8]         = "...bye!";
-char NACK_already_logged[19] = "...Already Logged!";
-char NACK_not_logged[26]     = "...you need to be logged!";
-char ACK_hallofame[21]       = "********************";
-char NACK_hallofame[30]      = "...hall of fame not available";
-char ACK_online_l[13]        = "...have fun!";
-char NACK_online_l[29]       = "...online list not available";
 
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
@@ -65,8 +42,30 @@ char NACK_online_l[29]       = "...online list not available";
 // Para o P2P: 
 //     TCP Server: socket[] -> bind[] -> listen[] -> accept[] 
 
+/*****************************************************************************************************/
+/*    MAIN                                                                                           */
+/*****************************************************************************************************/
 int main(int argc, char ** argv) 
 {
+
+    char ACK_new_user[21]        = "...new user created!";
+    char NACK_new_user[19]       = "...new user failed";
+    char ACK_in_user[11]         = "...logged!";
+    char NACK_in_user[47]        = "...not logged, username or password incorrect ";
+    char ACK_newpass_user[25]    = "...new password created!";
+    char NACK_newpass_user[35]   = "...error: new password not created";
+    char ACK_out_user[15]        = "...logged out!";
+    char NACK_out_user[23]       = "...error: still logged";
+    char ACK_bye_user[8]         = "...bye!";
+    char NACK_already_logged[19] = "...Already Logged!";
+    char NACK_not_logged[26]     = "...you need to be logged!";
+    char ACK_hallofame[21]       = "********************";
+    char NACK_hallofame[30]      = "...hall of fame not available";
+    char ACK_online_l[13]        = "...have fun!";
+    char NACK_online_l[29]       = "...online list not available";
+
+    char Ping[9]                 = "...ping";
+    char Server_down[32]         = "...lost connection with server.";
 
     // Message error
     if (argc < 2) {
@@ -114,6 +113,28 @@ int main(int argc, char ** argv)
     bool is_player1 = false;
 
     bool is_udp;
+
+    struct client_info player1;
+
+    ssize_t n_bytes;
+    pid_t sender, listener, front_end;
+
+    int listener_pipe[2]; // listener_pipe[0] <- Read; listener_pipe[1] <- Write;
+    pipe(listener_pipe);
+    int sender_pipe[2]; // sender_pipe[0] <- Read; sender_pipe[1] <- Write;
+    pipe(sender_pipe);
+    int front_end_pipe[2]; // front_end_pipe[0] <- Read; front_end_pipe[1] <- Write;
+    pipe(front_end_pipe);
+    int back_end_pipe[2]; // back_end_pipe[0] <- Read; back_end_pipe[1] <- Write;
+    pipe(back_end_pipe);
+
+
+    unsigned char client_message[64]; 
+    unsigned char server_message[64]; 
+    unsigned char processed_message[64]; 
+
+    struct pollfd poll_fd[2];
+    int ret;
 
 
     /**************************************************************************
@@ -216,300 +237,71 @@ int main(int argc, char ** argv)
         }
     }
 
-    /*****************************************************************************
+    
 
-     (Hotta: adicionarei dps)
-
-    ******************************************************************************/
-
-    struct client_info player1;
-
-    ssize_t n_bytes;
-    pid_t sender, listener, front_end;
-
-    int listener_pipe[2]; // listener_pipe[0] <- Read; listener_pipe[1] <- Write;
-    pipe(listener_pipe);
-    int sender_pipe[2]; // sender_pipe[0] <- Read; sender_pipe[1] <- Write;
-    pipe(sender_pipe);
-    int front_end_pipe[2]; // front_end_pipe[0] <- Read; front_end_pipe[1] <- Write;
-    pipe(front_end_pipe);
-    int back_end_pipe[2]; // back_end_pipe[0] <- Read; back_end_pipe[1] <- Write;
-    pipe(back_end_pipe);
-
-
-    unsigned char ping[1] = {1}; 
-    unsigned char client_message[64]; 
-    unsigned char server_message[64]; 
-    unsigned char processed_message[64]; 
-
-    struct pollfd poll_fd[2];
-    int ret, t_out;
-    int timeout = 3*60*1000; //milésimos
-
-    len = sizeof(serv_addr);
-
-    if ((listener = fork()) == -1)
+    listener = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
+    sender = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
+    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
+    if (listener == 0 || sender == 0 || front_end == 0)
     {
-        printf("Erro: fork listener failed\n");
-        exit(EXIT_FAILURE);
+        return 0;
     }
-    if (listener == 0) // Is listener
+    
+    while(1) // Is Main
     {
-        close(front_end_pipe[0]);
-        close(front_end_pipe[1]);
-        close(back_end_pipe[0]);
-        close(back_end_pipe[1]);
+        poll_fd[0].fd = front_end_pipe[0];
+        poll_fd[0].events = POLLIN;
+        poll_fd[1].fd = listener_pipe[0];
+        poll_fd[1].events = POLLIN;
 
-        n_bytes = 1;
-        while (n_bytes) 
+        memset((void *)client_message, 0, 64);
+        ret = poll(poll_fd, 2,  -1);
+        if (ret == -1)
         {
-
-            if (is_udp)
-            {
-                n_bytes = recvfrom(client_sockfd, (void *) server_message, sizeof(server_message), 0,
-                    (struct sockaddr *) &serv_addr, (socklen_t *) &len);
-                if (n_bytes == -1)
-                {
-                    printf("Erro: recvfrom failed\n");
-                    exit(EXIT_FAILURE);
-                }
-            } 
-            else 
-            {
-                n_bytes = recv(client_sockfd, (void *) server_message, sizeof(server_message), 0);
-                if (n_bytes == -1)
-                {
-                    printf("Erro: recv failed\n");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            
-            printf("Listener recebeu do socket: %s\n", server_message);
-            write(listener_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
-            memset((void *)server_message, 0, sizeof(server_message));
-            printf("    n_bytes: %d\n", (int) n_bytes);
+            printf("Error: poll from handler failed");
+            exit(EXIT_FAILURE);
         }
-        exit(EXIT_SUCCESS);
-    }
-    if ((sender = fork()) == -1)
-    {
-        printf("Erro: fork sender failed\n");
-        exit(EXIT_FAILURE);
-    }
-    if (sender == 0) 
-    {
-        close(front_end_pipe[0]);
-        close(front_end_pipe[1]);
-        close(back_end_pipe[0]);
-        close(back_end_pipe[1]); 
-        
-        n_bytes = 1;
-        while (n_bytes)
+        if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == front_end_pipe[0]))
         {
-            // fazer o poll e enviar um ping caso timeout
-
-            read(sender_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
-            printf("Sender recebeu do pipe: %s\n", client_message);
-
-            if (is_udp)
-            {
-                n_bytes = sendto(client_sockfd, (void *) client_message, sizeof(client_message), 0,
-                    (struct sockaddr *) &serv_addr, (socklen_t ) sizeof(serv_addr));
-                if (n_bytes == -1)
-                {
-                    printf("Erro: sendto failed\n");
-                    exit(EXIT_FAILURE);
-                }
-            } 
-            else 
-            {
-                n_bytes = send(client_sockfd, (void *) client_message, sizeof(client_message), 0);
-                if (n_bytes == -1)
-                {
-                    printf("Erro: send failed\n");
-                    exit(EXIT_FAILURE);
-                }
+            read(front_end_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
+            printf("Main recebeu do front_end: %s\n", client_message);
+            /*
+                Processa mensagem do front_end_pipe e envia para sender, return client_message;
+            */
+            if (!strncmp (client_message, "bye", 3)) {
+                printf("Bye command ...exiting!\n");
+                write (sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                sleep (1);
+                kill (sender, SIGKILL);
+                kill (listener, SIGKILL);
+                // front end terminates itself (return 0)
+                return 0;
             }
-            printf("   .... Sender enviou mensagem para Servidor\n");
-            memset((void *)client_message, 0, sizeof(client_message));
-            printf("    n_bytes: %d\n", (int) n_bytes);
-        }
-        exit(EXIT_SUCCESS);
-    }
-    if ((front_end = fork()) == -1)
-    {
-        printf("Erro: fork front_end failed\n");
-        exit(EXIT_FAILURE);
-    }
-    if (front_end == 0) // Is front_end
-    {
-        close(listener_pipe[0]);
-        close(listener_pipe[1]);
-        close(sender_pipe[0]);
-        close(sender_pipe[1]);
-        close(client_sockfd);
-
-        bool invalid_command = true;
-        bool need_loop = false;
-        while (1)
-        {
-            while(invalid_command) {
-                printf("JogoDaVelha> ");
-                fgets(user_input, 64, stdin);
-                user_input[strlen(user_input) - 1] = '\0'; 
-                printf("Front-end Input: %s\n", user_input);
-                strncpy(user_input_copy, user_input, strlen(user_input));
-                user_input_copy[strlen(user_input)] = '\0';
-                command = strtok(user_input_copy, " ");
-                client_message[strlen(client_message) - 1] = '\0';
-            /*  NEW    ___________________________________________________________________*/
-                if (!strncmp(command, "new", 3)) 
-                {
-                    invalid_command = false;
-                }
-            /*  PASS    __________________________________________________________________*/
-                else if (!strncmp(command, "pass", 4)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  IN    ____________________________________________________________________*/
-                else if (!strncmp(command, "in", 2)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  HALLOFFAME    ____________________________________________________________*/
-                else if (!strncmp(command, "halloffame", 10)) 
-                {
-                    printf("\n*** Hall of Fame ***\n\n");
-                    invalid_command = false;
-                    need_loop = true; 
-                }
-            /*  L    _____________________________________________________________________*/
-                else if (!strncmp(command, "l", 1)) 
-                {
-                    printf("\nUsuários Online\n");
-                    printf("(usuário) | (jogando)\n");
-                    invalid_command = false;
-                    need_loop = true; 
-                }
-            /*  CALL    __________________________________________________________________*/ 
-                else if (!strncmp(command, "call", 4)) 
-                { 
-                    invalid_command = false;
-                } 
-            /*  PLAY    __________________________________________________________________*/
-                else if (!strncmp(command, "play", 4)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  DELAY    _________________________________________________________________*/ 
-                else if (!strncmp(command, "delay", 5)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  OVER    __________________________________________________________________*/ 
-                else if (!strncmp(command, "over", 4)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  OUT    ___________________________________________________________________*/
-                else if (!strncmp(command, "out", 3)) 
-                { 
-                    invalid_command = false;
-                }
-            /*  BYE    ___________________________________________________________________*/
-                else if (!strncmp(command, "bye", 3)) 
-                { 
-                    invalid_command = false;
-                    write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
-                    printf ("Ending the game... Good bye!\n");
-                    sleep (2);
-                    return 0;
-                } 
-            /*  ELSE    __________________________________________________________________*/
-                else
-                {
-                    printf("    Comando inválido ...Digite novamente!\n");
-                }
-            }
-            write(front_end_pipe[1], (void *) user_input, (size_t) strlen(user_input));
-            if (need_loop)
-            {
-                read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                printf("    %s\n", server_message);
-                if (!strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged))) 
-                {
-                    need_loop = false;
-                    continue;
-                }
-                while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
-                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
-                {
-                    read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                    printf("    %s\n", server_message);
-                } 
-                need_loop = false;
-            }
-            else
-            {
-                read(back_end_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                printf("Front-end Output: %s\n", server_message);
-            }
-            memset((void *) user_input, 0, sizeof(user_input));
-            memset((void *) server_message, 0, sizeof(server_message));
-            invalid_command = true;
-            need_loop = false;
-        }
-        exit(EXIT_SUCCESS);
-    }
-    else // Is Main 
-    {
-        while(1) 
-        {
-            poll_fd[0].fd = front_end_pipe[0];
-            poll_fd[0].events = POLLIN;
-            poll_fd[1].fd = listener_pipe[0];
-            poll_fd[1].events = POLLIN;
-
-            memset((void *)client_message, 0, 64);
-            ret = poll(poll_fd, 2,  0);
-            if (ret == -1)
-            {
-                printf("Error: poll from handler failed");
-                exit(EXIT_FAILURE);
-            }
-            if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == front_end_pipe[0]))
-            {
-                read(front_end_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
-                printf("Main recebeu do front_end: %s\n", client_message);
-                /*
-                    Processa mensagem do front_end_pipe e envia para sender, return client_message;
-                */
-                if (!strncmp (client_message, "bye", 3)) {
-                    write (sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
-                    sleep (1);
-                    kill (sender, SIGKILL);
-                    kill (listener, SIGKILL);
-                    // front end terminates itself (return 0)
-                    return 0;
-                    
-                }
-                else {
-                    write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
-                    usleep(50000);
-                }
-            }
-            if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
-            {
-                read(listener_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                printf("Main recebeu do main_pipe: %s\n", server_message);
-                /*
-                    Processa mensagem do listener, return processed_message;
-                */
-                strncpy(processed_message, server_message, 64);
-                write(back_end_pipe[1], (void *) processed_message, (size_t) sizeof(processed_message));
+            else {
+                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
                 usleep(50000);
             }
+        }
+        if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
+        {
+            read(listener_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+            printf("Main recebeu do main_pipe: %s\n", server_message);
+            /*
+                Processa mensagem do listener, return processed_message;
+            */
+            if (!strncmp (server_message, Server_down, sizeof(Server_down)))
+            {
+                printf("\n%s\n", server_message);
+                write (back_end_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                kill (sender, SIGKILL);
+                kill (listener, SIGKILL);
+                sleep (2);
+                kill (front_end, SIGKILL);
+                return 0; 
+            }
+            strncpy(processed_message, server_message, 64);
+            write(back_end_pipe[1], (void *) processed_message, (size_t) sizeof(processed_message));
+            usleep(50000);
         }
     }
 } 

@@ -34,7 +34,7 @@
 /*man pool*/
 #include <poll.h>
 
-#include "Aux_Handlers.h"
+#include "S_Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
 
 char ACK_new_user[21]        = "...new user created!";
@@ -52,6 +52,8 @@ char ACK_hallofame[21]       = "********************";
 char NACK_hallofame[30]      = "...hall of fame not available";
 char ACK_online_l[13]        = "...have fun!";
 char NACK_online_l[29]       = "...online list not available";
+
+char Ping[9]                 = "...ping";
 
 /*****************************************************************************************************/
 /*                                                                                                   */
@@ -224,7 +226,6 @@ void master_handler(int player_rd, char * client_message)
 /*    CLIENT HANDLER                                                                                 */
 /*                                                                                                   */
 /*****************************************************************************************************/
-
 int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd) 
 {
     int udp_fd;
@@ -280,6 +281,9 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
     {
         close(pipe_read);
         close(pipe_write);
+
+        struct pollfd listen_poll_fd[1];
+        int timeout = 3*60*1000; //milésimo
     
         if(is_udp)
         {
@@ -293,29 +297,57 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
             write(list_to_send_pipe[1],(void *) &port, sizeof(port));
             printf("Listener: Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
             printf("Listener recebeu do socket: %s\n", client_message);
-            write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+            if (strncmp(client_message, Ping, sizeof(Ping)))
+            {
+                write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+            }
         }
         n_bytes = 1;
         while (n_bytes)
         {
-            // fazer o poll enviar um ping caso timeout
-            memset((void *)client_message, 0, sizeof(client_message));
-            if(is_udp)
+            if(is_udp) listen_poll_fd[0].fd = udp_fd;
+            else listen_poll_fd[0].fd = tcp_fd;
+            listen_poll_fd[0].events = POLLIN;
+           
+
+            ret = poll(listen_poll_fd, 1, timeout);
+            if(ret == -1)
             {
-                n_bytes = recvfrom(udp_fd, (void *) client_message, sizeof(client_message), 0,
-                                    (struct sockaddr *) &addr, (socklen_t *) &len);
-            }
-            else
-            {
-                n_bytes = recv(tcp_fd, (void *) client_message, sizeof(client_message), 0);
-            }
-            if (n_bytes == -1)
-            {
-                printf("Erro: receive from client_handler failed\n");
+                printf("Error: poll from handler failed");
                 exit(EXIT_FAILURE);
             }
-            printf("Listener recebeu do socket: %s\n", client_message);
-            write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+            if(ret == 0) // Client is not responding!
+            {
+                printf("\n...Client is not responding!\n");
+            }
+            if ((listen_poll_fd[0].revents & POLLIN) && 
+                ((listen_poll_fd[0].fd == udp_fd)    ||
+                 (listen_poll_fd[0].fd == tcp_fd)))
+            {
+                memset((void *)client_message, 0, sizeof(client_message));
+                if(is_udp)
+                {
+                    n_bytes = recvfrom(udp_fd, (void *) client_message, sizeof(client_message), 0,
+                                        (struct sockaddr *) &addr, (socklen_t *) &len);
+                }
+                else
+                {
+                    n_bytes = recv(tcp_fd, (void *) client_message, sizeof(client_message), 0);
+                }
+                if (n_bytes == -1)
+                {
+                    printf("Erro: receive from client_handler failed\n");
+                    exit(EXIT_FAILURE);
+                }
+                client_message[n_bytes + 1] = '\0';
+                printf("Listener recebeu do socket: %s\n", client_message);
+                printf("    n_bytes: %d\n", (int) n_bytes);
+                if (strncmp(client_message, Ping, sizeof(Ping)))
+                {   
+                    printf("Listener recebeu do socket: %s\n", client_message);
+                    write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                } 
+            }
         }
         exit(EXIT_SUCCESS);
     }
@@ -329,6 +361,10 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
     {
         close(pipe_read);
         close(pipe_write);
+
+        struct pollfd sender_poll_fd[1];
+        int timeout = 15*1000; //milésimo
+
         if (is_udp)
         {
             read(list_to_send_pipe[0], (void *) &port, sizeof(port));
@@ -338,24 +374,60 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
         n_bytes = 1;
         while (n_bytes)
         {
-            read(sender_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-            printf("Sender recebeu do pipe: %s\n", server_message);
-            if (is_udp)
+            sender_poll_fd[0].fd = sender_pipe[0];
+            sender_poll_fd[0].events = POLLIN;
+
+            ret = poll(sender_poll_fd, 1, timeout);
+            if(ret == -1)
             {
-                n_bytes = sendto(udp_fd, (void *) server_message, strlen(server_message), 0,
-                            (const struct sockaddr *) &addr, (socklen_t ) sizeof(addr));
-            }
-            else
-            {
-                n_bytes = send(tcp_fd, (void *) server_message, strlen(server_message), 0);
-            }
-            if (n_bytes == -1)
-            {
-                printf("Erro: sender from client_handler failed\n");
+                printf("Error: poll from sender failed");
                 exit(EXIT_FAILURE);
             }
-            printf("   .... Sender enviou mensagem para Cliente\n");
-            memset((void *)server_message, 0, sizeof(server_message));
+            if(ret == 0)
+            {
+                if (is_udp)
+                {
+                    n_bytes = sendto(udp_fd, (void *) Ping, sizeof(Ping), 0,
+                        (struct sockaddr *) &addr, (socklen_t ) sizeof(addr));
+                    if (n_bytes == -1)
+                    {
+                        printf("Erro: sendto failed\n");
+                        exit(EXIT_FAILURE);
+                    }
+                } 
+                else 
+                {
+                    n_bytes = send(tcp_fd, (void *) Ping, sizeof(Ping), 0);
+                    if (n_bytes == -1)
+                    {
+                        printf("Erro: send failed\n");
+                        exit(EXIT_FAILURE);
+                    }
+                }
+            }
+            if ((sender_poll_fd[0].revents & POLLIN) &&
+                (sender_poll_fd[0].fd == sender_pipe[0]))
+            {
+                read(sender_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+                printf("Sender recebeu do pipe: %s\n", server_message);
+                if (is_udp)
+                {
+                    n_bytes = sendto(udp_fd, (void *) server_message, strlen(server_message), 0,
+                                (const struct sockaddr *) &addr, (socklen_t ) sizeof(addr));
+                }
+                else
+                {
+                    n_bytes = send(tcp_fd, (void *) server_message, strlen(server_message), 0);
+                }
+                if (n_bytes == -1)
+                {
+                    printf("Erro: sender from client_handler failed\n");
+                    exit(EXIT_FAILURE);
+                }
+                printf("   .... Sender enviou mensagem para Cliente\n");
+                printf("    n_bytes: %d\n", (int) n_bytes);
+                memset((void *)server_message, 0, sizeof(server_message));
+            }
         }
         exit(EXIT_SUCCESS);
     }

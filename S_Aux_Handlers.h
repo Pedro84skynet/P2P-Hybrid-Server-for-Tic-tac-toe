@@ -1,5 +1,5 @@
-#ifndef AUX_HANDLERS_H
-#define AUX_HANDLERS_H
+#ifndef S_AUX_HANDLERS_H
+#define S_AUX_HANDLERS_H
 
 #define _GNU_SOURCE         
 #include <unistd.h>
