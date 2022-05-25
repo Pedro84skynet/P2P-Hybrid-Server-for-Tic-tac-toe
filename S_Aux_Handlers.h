@@ -18,12 +18,12 @@ struct client_info {
 /******************************************************************************/
 /*    MASTER HANDLER                                                          */
 /******************************************************************************/
-void master_handler(int player_rd, char * client_message);
+int master_handler(int player_rd, char * client_message);
 
 /******************************************************************************/
 /*    CLIENT HANDLER                                                          */
 /******************************************************************************/
-int client_handler(bool is_udp, int pipe_read, int pipe_write, 
+int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, 
                     uint16_t port, int tcp_fd);
 
 

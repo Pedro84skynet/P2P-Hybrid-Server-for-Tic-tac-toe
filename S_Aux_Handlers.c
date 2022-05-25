@@ -54,13 +54,18 @@ char ACK_online_l[13]        = "...have fun!";
 char NACK_online_l[29]       = "...online list not available";
 
 char Ping[9]                 = "...ping";
+char Reconnect[36]           = "...starting reconnection procedure.";
+char Server_down[32]         = "...lost connection with server.";
+
+char ACK_accept[13]          = "...accepted!";
+char NACK_accept[17]         = "...not accepted!";
 
 /*****************************************************************************************************/
 /*                                                                                                   */
 /*    MASTER HANDLER                                                                                 */
 /*                                                                                                   */
-/*****************************************************************************************************/
-void master_handler(int player_rd, char * client_message)
+/*****************************************************************************************************/ 
+int master_handler(int player_rd, char * client_message)
 {
     printf("master_handler receive: %s\n", client_message);
     unsigned char client_message_copy[64];
@@ -90,7 +95,8 @@ void master_handler(int player_rd, char * client_message)
             log_event(event);
             printf("Master: new user created.\n");
             write(player_rd, ACK_new_user, sizeof(ACK_new_user));
-        } 
+        }
+        return 1; 
     }
 /*  PASS    __________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
@@ -114,6 +120,7 @@ void master_handler(int player_rd, char * client_message)
             printf("Master: new password created.\n");
             write(player_rd, ACK_newpass_user, sizeof(ACK_newpass_user));
         }
+        return 2;
     }
 /*  IN    ____________________________________________________________________*/
     else if (!strncmp(command, "in", 2)) 
@@ -136,7 +143,8 @@ void master_handler(int player_rd, char * client_message)
             printf("Master: user logged.\n");
             write(player_rd, ACK_in_user, sizeof(ACK_in_user));
         }
-        int change_data(char *username, int cod); 
+        int change_data(char *username, int cod);
+        return 3; 
     }
 /*  HALLOFFAME    ____________________________________________________________*/
     else if (!strncmp(command, "halloffame", 10)) 
@@ -151,6 +159,7 @@ void master_handler(int player_rd, char * client_message)
             log_event("sending a hall of fame list.");
             write(player_rd, ACK_hallofame, sizeof(ACK_hallofame));
         }
+        return 4;
     }
 /*  l    _____________________________________________________________________*/ 
     else if (!strncmp(command, "l", 1)) 
@@ -165,26 +174,59 @@ void master_handler(int player_rd, char * client_message)
             log_event("sending a online list.");
             write(player_rd, ACK_online_l, sizeof(ACK_online_l));
         }
+        return 5;
     }
 /*  CALL    __________________________________________________________________*/
-    else if (!strncmp(command, "pass", 4)) 
+    else if (!strncmp(command, "call", 4)) 
     {
-        /* code */
+        user = strtok(NULL, " ");
+        token = strtok(NULL, " ");
+        if (is_online(user))
+        {
+            sprintf(event,"sending call to %s.", user);
+            log_event(event);
+            return 6; 
+        }
+        else
+        {
+            sprintf(event,"call received but %s is not online.", user);
+            log_event(event);
+            return 7;
+        }
     }
-/*  PLAY    __________________________________________________________________*/
-    else if (!strncmp(command, "play", 4)) 
+    /*  ACK_accept  */
+    else if (!strncmp(command, ACK_accept, sizeof(ACK_accept))) 
     {
-        /* code */
+        user = strtok(NULL, " ");
+        token = strtok(NULL, " ");
+        if(change_data(user, 3))
+        {
+            sprintf(event,"Error: Database failed to logged out user %s.", user);
+            log_event(event);
+        }
+        else
+        {
+            sprintf(event,"user %s is now playing.", user);
+            log_event(event);
+            
+        }
+        if(change_data(token, 3))
+        {
+            sprintf(event,"Error: Database failed to logged out user %s.", token);
+            log_event(event);
+        }
+        else
+        {
+            sprintf(event,"user %s is now playing.", token);
+            log_event(event);
+        }
+        return 8;
     }
-/*  DELAY    _________________________________________________________________*/
-    else if (!strncmp(command, "delay", 5)) 
-    {
-        /* code */
-    }
+    
 /*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
-        /* code */
+        return 9;
     }
 /*  OUT    ___________________________________________________________________*/
     else if (!strncmp(command, "out", 3)) 
@@ -204,6 +246,7 @@ void master_handler(int player_rd, char * client_message)
             log_event(event);
             write(player_rd, ACK_out_user, sizeof(ACK_out_user));
         }
+        return 10;
     }
 /*  BYE    ___________________________________________________________________*/
     else if (!strncmp(command, "bye", 3)) 
@@ -217,6 +260,7 @@ void master_handler(int player_rd, char * client_message)
             log_event(event);
             write(player_rd, NACK_out_user, sizeof(NACK_out_user));
         }
+        return 11;
     }  
 }
 
@@ -226,7 +270,7 @@ void master_handler(int player_rd, char * client_message)
 /*    CLIENT HANDLER                                                                                 */
 /*                                                                                                   */
 /*****************************************************************************************************/
-int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd) 
+int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd) 
 {
     int udp_fd;
     ssize_t n_bytes;
@@ -260,12 +304,12 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
 
         if ((udp_fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
         {
-            printf("Error: socket not created");
+            printf("client_handler: Error: socket not created");
             exit(EXIT_FAILURE);
         }
         if (bind(udp_fd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
         {
-            printf("Error: udp_fd bind failed");
+            printf("client_handler: Error: udp_fd bind failed");
             exit(EXIT_FAILURE);
         } 
     }
@@ -274,10 +318,13 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
 
     if ((listener = fork()) == -1)
     {
-        printf("Erro: fork listener from udp_client_handler failed\n");
+        printf("client_handler: Erro: fork listener from udp_client_handler failed\n");
         exit(EXIT_FAILURE);
     }
-    if (listener == 0) // Is listener
+    /*
+        Listener
+    */
+    if (listener == 0) 
     {
         close(pipe_read);
         close(pipe_write);
@@ -360,7 +407,10 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
         printf("Erro: fork sender from udp_client_handler failed\n");
         exit(EXIT_FAILURE);
     }
-    if (sender == 0) // Is sender
+    /*
+        Sender
+    */
+    if (sender == 0) 
     {
         close(pipe_read);
         close(pipe_write);
@@ -438,7 +488,8 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
     {
         close(udp_fd);
         // Auxiliars
-        unsigned char client_message_copy[64], client_message_processed[128], username[64];
+        unsigned char client_message_copy[64], username[64];
+        unsigned char client_message_processed[128], server_message_processed[128];
         unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
         bool logged = false;
 
@@ -456,19 +507,19 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                 printf("Error: poll from handler failed\n");
                 exit(EXIT_FAILURE);
             }
-            /*    
-                Processa mensagem do listener, return client_message;    
-            */
+        /*    
+            Processa mensagem do listener, return client_message;    
+        */
             else if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == listener_pipe[0]))
             {
                 read(listener_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
-                printf("Processador recebeu do listener: %s\n", client_message);
+                printf("client_handler: Processador recebeu do listener: %s\n", client_message);
                 
                 strncpy(client_message_copy, client_message, strlen(client_message));
                 client_message_copy[strlen(client_message)] = '\0';
                 command = strtok(client_message_copy, " ");
             /*  Specials Cases*/
-            /*  IN    ________________________________________________________________________________*/
+            /*  IN  */
             /*  Must record username in variable username before send to master.                      */
                 if (!strncmp(command, "in", 4))
                 {
@@ -487,10 +538,12 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                         write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
                     }
                 }
-            /*  PASS   _______________________________________________________________________________*/
-            /*  OUT    _______________________________________________________________________________*/
+            /*  PASS  */
+            /*  CALL  */
+            /*  OUT   */
             /*  Must concatenate request with username before send to master.                         */
-                else if (!strncmp(command, "pass", 4) || 
+                else if (!strncmp(command, "pass", 4) ||
+                         !strncmp(command, "call", 4) || 
                          !strncmp(command, "out" , 3))
                 {
                     if(logged) 
@@ -509,7 +562,7 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                         write(sender_pipe[1], (void *) NACK_not_logged, (size_t) sizeof(NACK_not_logged));
                     }
                 }
-            /*  BYE    _______________________________________________________________________________*/
+            /*  BYE  */
             /*  Must concatenate request with username in logged case before send to master.          */
             /*  kill sender and listener before exit.                                                 */
                 else if (!strncmp(command, "bye", 3))
@@ -529,8 +582,8 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     kill (listener, SIGKILL);
                     return 0;
                 }
-            /*  L    _________________________________________________________________________________*/
-            /*  HALLOFFAME    ________________________________________________________________________*/
+            /*  L           */
+            /*  HALLOFFAME  */
             /*  Must be logged to request.                                                            */
                 else if (!strncmp(command, "l", 1) || 
                          !strncmp(command, "halloffame" , 10))
@@ -551,13 +604,15 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                 memset(client_message, 0, sizeof(client_message)); 
                 memset(client_message_copy, 0, sizeof(client_message_copy)); 
             }
-            /*
-                Processa mensagem do main do servidor, return server_message;
-            */
+
+        /*
+            Processa mensagem do main do servidor, return server_message;
+        */
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {
                 read(pipe_read, (void *) server_message, (size_t) sizeof(server_message));
-                printf("Processador  recebeu do main: %s\n", server_message);
+                printf("Client handler: Processador recebeu do main: %s\n", server_message);
+            /*  logged  */
                 if (!strncmp(server_message, ACK_in_user, sizeof(ACK_in_user)))
                 {
                     logged = true;
@@ -566,8 +621,22 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                 {
                     logged = false;
                 }
-                write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
-                memset(server_message, 0, sizeof(server_message));
+            /*  CALL  */
+                if (!strncmp(server_message, "call", 4))
+                {
+                    printf("Client handler: Anexando ip %s\n", ip);
+                    memset(server_message_processed, 0, sizeof(server_message_processed));
+                    sprintf(server_message_processed, "%s %s", server_message, ip); 
+                    server_message_processed[strlen(server_message_processed)] = '\0';
+                    write(sender_pipe[1], (void *) server_message_processed, strlen(server_message_processed));
+                    printf("[server_message_processed: %s len: %ld]\n", server_message_processed, strlen(server_message_processed));
+                }
+                else
+                {
+                    write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                    printf("Client handler: ...enviando mensagem pro sender_pipe[1]\n");
+                    memset(server_message, 0, sizeof(server_message));
+                }
             }
         }
     }  
