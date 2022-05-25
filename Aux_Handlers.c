@@ -1,13 +1,16 @@
 /******************************************************************************
  *  Compilation:  (Use make)
- *  Execution:    ./EP2_Server port_number protocol
+ *  Execution:    ---
  *
- *  - port_number: port number used to connect in EP2_Servidor.
- *  - protocol   : "UDP" or "TCP"
  *
  *  DESCRIPTION
  *
- *  Auxiliars Functions for the server to handle requests
+ *  Auxiliars Functions for the server to handle requests, divided in two:
+ *
+ *    - Master Handler: used to modify log.txt and communicate with master
+ *      proccess;
+ *
+ *    - Client Handler: used by the server to communicate with client.
  *
  *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
  *
@@ -16,6 +19,7 @@
  *  - 
  *
  ******************************************************************************/
+
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,22 +40,7 @@
 
 #include "Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
-
-char ACK_new_user[21]        = "...new user created!";
-char NACK_new_user[19]       = "...new user failed";
-char ACK_in_user[11]         = "...logged!";
-char NACK_in_user[47]        = "...not logged, username or password incorrect ";
-char ACK_newpass_user[25]    = "...new password created!";
-char NACK_newpass_user[35]   = "...error: new password not created";
-char ACK_out_user[15]        = "...logged out!";
-char NACK_out_user[23]       = "...error: still logged";
-char ACK_bye_user[8]         = "...bye!";
-char NACK_already_logged[19] = "...Already Logged!";
-char NACK_not_logged[26]     = "...you need to be logged!";
-char ACK_hallofame[21]       = "********************";
-char NACK_hallofame[30]      = "...hall of fame not available";
-char ACK_online_l[13]        = "...have fun!";
-char NACK_online_l[29]       = "...online list not available";
+#include "Protocol.h"
 
 /*****************************************************************************************************/
 /*                                                                                                   */
@@ -75,8 +64,8 @@ void master_handler(int player_rd, char * client_message)
         log_event("Received request for new user");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        printf("Master: [user:%s len: %ld]\n", user, strlen(user));
-        printf("Master: [pass:%s len: %ld]\n", pass, strlen(pass));
+        printf("Master: [user:%s len: %u]\n", user, strlen(user));
+        printf("Master: [pass:%s len: %u]\n", pass, strlen(pass));
         if(insert_user(user, pass)) 
         {
             printf("Error: new user NOT created.\n");
@@ -98,7 +87,7 @@ void master_handler(int player_rd, char * client_message)
         new_pass = strtok(NULL, " ");
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld]\n", user, strlen(user));
+        printf("[user:%s len: %u]\n", user, strlen(user));
         if (change_pass(user, old_pass, new_pass))
         {
             printf("Error: new password NOT created.\n");
@@ -120,8 +109,8 @@ void master_handler(int player_rd, char * client_message)
         log_event("log requested.");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        printf("Master: [user:%s len: %ld]\n", user, strlen(user));
-        printf("Master: [pass:%s len: %ld]\n", pass, strlen(pass));
+        printf("Master: [user:%s len: %u]\n", user, strlen(user));
+        printf("Master: [pass:%s len: %u]\n", pass, strlen(pass));
         if(log_user(user, pass)) {
             printf("Error: username or password did NOT match.\n");
             log_event("log denied: username or password did NOT match.");
@@ -150,7 +139,7 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_hallofame, sizeof(ACK_hallofame));
         }
     }
-/*  l    _____________________________________________________________________*/ 
+    /*  l    _____________________________________________________________________*/ 
     else if (!strncmp(command, "l", 1)) 
     {
         if(l_sender(player_rd)) {
@@ -164,32 +153,32 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_online_l, sizeof(ACK_online_l));
         }
     }
-/*  CALL    __________________________________________________________________*/
+    /*  CALL    __________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
     {
         /* code */
     }
-/*  PLAY    __________________________________________________________________*/
+    /*  PLAY    __________________________________________________________________*/
     else if (!strncmp(command, "play", 4)) 
     {
         /* code */
     }
-/*  DELAY    _________________________________________________________________*/
+    /*  DELAY    _________________________________________________________________*/
     else if (!strncmp(command, "delay", 5)) 
     {
         /* code */
     }
-/*  OVER    __________________________________________________________________*/
+    /*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
         /* code */
     }
-/*  OUT    ___________________________________________________________________*/
+    /*  OUT    ___________________________________________________________________*/
     else if (!strncmp(command, "out", 3)) 
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld\n", user, strlen(user));
+        printf("[user:%s len: %u\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -203,12 +192,12 @@ void master_handler(int player_rd, char * client_message)
             write(player_rd, ACK_out_user, sizeof(ACK_out_user));
         }
     }
-/*  BYE    ___________________________________________________________________*/
+    /*  BYE    ___________________________________________________________________*/
     else if (!strncmp(command, "bye", 3)) 
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld\n", user, strlen(user));
+        printf("[user:%s len: %u\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -404,11 +393,11 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     else 
                     {
                         user = strtok(NULL, " ");
-                        printf("Processor: [user:%s len: %ld]\n", user, strlen(user));
+                        printf("Processor: [user:%s len: %u]\n", user, strlen(user));
                         memset(username, 0, 64); 
                         strncpy(username, user, strlen(user));
                         username[strlen(username)] = '\0';
-                        printf("[username: %s len %ld]\n", username, strlen(username));
+                        printf("[username: %s len %u]\n", username, strlen(username));
                         write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
                     }
                 }
@@ -422,7 +411,7 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     {
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
-                        printf("[client_message_processed: %s len: %ld]\n", 
+                        printf("[client_message_processed: %s len: %u]\n", 
                                     client_message_processed, 
                                     strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, 
@@ -435,7 +424,7 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
                     }
                 }
             /*  BYE    _______________________________________________________________________________*/
-            /*  Must concatenate request with username in logged case before send to master.          */
+            /*  Must concatenate request with username in logged case before sending to master.       */
             /*  kill sender and listener before exit.                                                 */
                 else if (!strncmp(command, "bye", 3))
                 {

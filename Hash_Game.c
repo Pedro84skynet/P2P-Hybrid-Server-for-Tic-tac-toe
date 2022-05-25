@@ -1,3 +1,20 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ---
+ *
+ *
+ *  DESCRIPTION
+ *
+ *  Tic-Tac-Toe implemented using an array of chars (very simple implementation)
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - check for bugs 
+ *
+ ******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

@@ -34,7 +34,7 @@
 
 
 #include "Hash_Game.h"
-
+#include "Protocol.h"
 
 struct client_info {
     char ip[16];
@@ -42,22 +42,6 @@ struct client_info {
     uint16_t P2P_port;
     bool main;
 };
-
-char ACK_new_user[21]        = "...new user created!";
-char NACK_new_user[19]       = "...new user failed";
-char ACK_in_user[11]         = "...logged!";
-char NACK_in_user[47]        = "...not logged, username or password incorrect ";
-char ACK_newpass_user[25]    = "...new password created!";
-char NACK_newpass_user[35]   = "...error: new password not created";
-char ACK_out_user[15]        = "...logged out!";
-char NACK_out_user[23]       = "...error: still logged";
-char ACK_bye_user[8]         = "...bye!";
-char NACK_already_logged[19] = "...Already Logged!";
-char NACK_not_logged[26]     = "...you need to be logged!";
-char ACK_hallofame[21]       = "********************";
-char NACK_hallofame[30]      = "...hall of fame not available";
-char ACK_online_l[13]        = "...have fun!";
-char NACK_online_l[29]       = "...online list not available";
 
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
@@ -94,8 +78,8 @@ int main(int argc, char ** argv)
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(atoi(argv[1]));
-    //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
-    serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
+    serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
+    //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
 
 
     char user_input[64], user_input_copy[64];

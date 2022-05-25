@@ -1,3 +1,22 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ---
+ *
+ *
+ *  DESCRIPTION
+ *
+ *  Auxiliars Functions for the server to manage the database (database.txt)
+ *  and log (log.txt)
+ *
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - 
+ *
+ ******************************************************************************/
+
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
@@ -253,7 +272,7 @@ int halloffame_sender(int pipe)
         score = strtok(NULL, " ");
         sprintf(line, "%s %s", user, score);
         write(pipe, (void *) line, (size_t) sizeof(line));
-        printf("halloffame_sender: line sended: %s strlen: %ld\n",line, strlen(line));
+        printf("halloffame_sender: line sended: %s strlen: %u\n",line, strlen(line));
         memset((void *)line, 0, 64);
     }
     fclose(fp);
@@ -289,7 +308,7 @@ int l_sender(int pipe)
                 sprintf(line, "%s | não", user);
             }   
             write(pipe, (void *) line, (size_t) sizeof(line));
-            printf("l_sender: line sended: %s strlen: %ld\n",line, strlen(line));
+            printf("l_sender: line sended: %s strlen: %u\n",line, strlen(line));
         }
         memset((void *)line, 0, 64);
     }
