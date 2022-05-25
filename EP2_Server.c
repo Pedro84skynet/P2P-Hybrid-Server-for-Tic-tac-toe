@@ -66,6 +66,7 @@ int main(int argc, char ** argv)
     pipe(player2_rd);
 
     int listen_fd, tcp_fd, udp_fd; 
+    int mh_return;
     int max_clients = 2;
     struct sockaddr_in serv_addr, serv_addr2, clie_addr; 
     int player_id;
@@ -77,6 +78,9 @@ int main(int argc, char ** argv)
     unsigned char CONNECT;
     unsigned char ACK_NACK;
     uint16_t CHANGE_PORT;
+
+    int ip_len;
+    char player_ip[16];
 
     CONNECT = 0;
 
@@ -163,6 +167,11 @@ int main(int argc, char ** argv)
                     printf("Error: udp_fd pool recvfrom failed");
                     exit(EXIT_FAILURE);
                 }
+                ip_len = strlen(inet_ntoa(serv_addr.sin_addr));
+                memset((void *) player_ip, 0, sizeof(player_ip));
+                strncpy(player_ip, inet_ntoa(serv_addr.sin_addr), ip_len + 1);
+                player_ip[ip_len + 1] = '\0';
+                printf("    IP address is: %s\n", player_ip);
                 if (CONNECT)
                 {
                     ACK_NACK = 1;
@@ -197,12 +206,8 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     close(listen_fd);
                     
-                    if(n_clients)
-                    {
-
-                        client_handler(true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
-                    }
-                    else client_handler(true, player1_rd[0], player1_wr[1], aux_udp_port, 0);
+                    if(n_clients)client_handler(player_ip, true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
+                    else client_handler(player_ip, true, player1_rd[0], player1_wr[1], aux_udp_port, 0);
 
                     return 0;
                 }
@@ -222,6 +227,11 @@ int main(int argc, char ** argv)
                     printf("Error: recv failed");
                     exit(EXIT_FAILURE);
                 }
+                ip_len = strlen(inet_ntoa(serv_addr.sin_addr));
+                memset((void *) player_ip, 0, sizeof(player_ip));
+                strncpy(player_ip, inet_ntoa(serv_addr.sin_addr), ip_len + 1);
+                player_ip[ip_len + 1] = '\0';
+                printf("    IP address is: %s\n", player_ip);
                 if (CONNECT)
                 {
                     ACK_NACK = 1;
@@ -241,8 +251,8 @@ int main(int argc, char ** argv)
                 {
                     close(listen_fd);
                     close(udp_fd);
-                    if(n_clients) client_handler(false, player2_rd[0], player2_wr[1], 0, tcp_fd);
-                    else client_handler(false, player1_rd[0], player1_wr[1], 0, tcp_fd);
+                    if(n_clients) client_handler(player_ip, false, player2_rd[0], player2_wr[1], 0, tcp_fd);
+                    else client_handler(player_ip, false, player1_rd[0], player1_wr[1], 0, tcp_fd);
 
                     return 0;
                 }
@@ -278,9 +288,19 @@ int main(int argc, char ** argv)
             printf("Master poll: pipe do Player1!\n");
             read(player1_wr[0], client_message, sizeof(client_message));
             printf("Master read from player1_wr[0]: %s\n", client_message);
-            master_handler(player1_rd[1], client_message);
+            mh_return = master_handler(player1_rd[1], client_message);
+        /*  CALL    __________________________________________________________________*/
+            if (mh_return == 6) // call to other player.
+            {
+                printf("mh_return == 6\n");
+                write(player2_rd[1], client_message, sizeof(client_message));
+            }
+            if (mh_return == 8) // call to other player.
+            {
+                printf("mh_return == 8\n");
+                write(player2_rd[1], ACK_accept, sizeof(ACK_accept));
+            }
             memset(client_message, 0, (size_t) sizeof(client_message));
-
         }
         else if ((fd[1].revents == POLLIN) && fd[1].fd == player2_wr[0])
         {
@@ -288,8 +308,19 @@ int main(int argc, char ** argv)
             /* Atualiza banco de dados com requisições do 
                processo do servidor referente a player 2*/
             read(player2_wr[0], client_message, sizeof(client_message));
-            printf("Master read from player1_wr[0]: %s\n", client_message);
-            master_handler(player2_rd[1], client_message);
+            printf("Master read from player2_wr[0]: %s\n", client_message);
+            mh_return = master_handler(player2_rd[1], client_message);
+        /*  CALL    __________________________________________________________________*/
+            if (mh_return == 6) // call to other player.
+            {
+                printf("mh_return == 6\n");
+                write(player1_rd[1], client_message, sizeof(client_message));
+            }
+            if (mh_return == 8) // call to other player.
+            {
+                printf("mh_return == 8\n");
+                write(player1_rd[1], ACK_accept, sizeof(ACK_accept));
+            }
             memset(client_message, 0, sizeof(client_message));
         } 
     }

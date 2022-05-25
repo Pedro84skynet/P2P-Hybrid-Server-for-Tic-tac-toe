@@ -41,5 +41,7 @@
 #define Ping                 "...ping"
 #define Reconnect            "...starting reconnection procedure."
 #define Server_down          "...lost connection with server."
+#define ACK_accept           "...accepted!"
+#define NACK_accept          "...not accepted!"
 
 #endif

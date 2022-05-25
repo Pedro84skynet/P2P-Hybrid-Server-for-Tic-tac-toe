@@ -212,7 +212,8 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
     pid_t  front_end;
     int n_bytes, len, ret; 
     char user_input[64], user_input_copy[64], server_message[64], client_message[64];
-    char * command;
+    char other_player_name[64];
+    char * command, * player2;
     bool logged = false;
 
     if ((front_end = fork()) == -1)
@@ -222,6 +223,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
     }
     if (front_end == 0) 
     {
+        printf("[front_end created]\n");
         bool invalid_command = true;
         bool need_loop = false;
         while (1)
@@ -260,7 +262,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
             /*  L    _____________________________________________________________________*/
                 else if (!strncmp(command, "l", 1)) 
                 {
-                    printf("\nUsuários Online\n");
+                    printf("\nUsuários Online:\n");
                     printf("(usuário) | (jogando)\n");
                     invalid_command = false;
                     need_loop = true; 
@@ -269,6 +271,9 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
                 else if (!strncmp(command, "call", 4)) 
                 { 
                     invalid_command = false;
+                    player2 = strtok(NULL, " ");
+                    strncpy(other_player_name, player2, strlen(player2));
+                    printf ("front-end: other_player_name: %s\n", other_player_name);
                 } 
             /*  PLAY    __________________________________________________________________*/
                 else if (!strncmp(command, "play", 4)) 
@@ -347,6 +352,8 @@ int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_
     unsigned char CONNECT;
     unsigned char ACK_NACK;
     uint16_t CHANGE_PORT;
+
+    CONNECT = 1;
 
     if (is_udp)
     {
