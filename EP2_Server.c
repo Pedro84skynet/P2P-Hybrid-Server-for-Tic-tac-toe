@@ -37,6 +37,7 @@
 
 #include "S_Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
+#include "Protocol.h"
 
 /*
     TCP CLiente:  socket[] -> connect[] -> receive[]
@@ -51,13 +52,6 @@
 /*****************************************************************************************************/
 int main(int argc, char ** argv)
 {
-    char ACK_new_user[21]  = "...new user created!";
-    char NACK_new_user[19] = "...new user failed";
-    char ACK_in_user[11]   = "...logged!";
-    char NACK_in_user[47]  = "...not logged, username or password incorrect ";
-    char ACK_out_user[15]  = "...logged out!";
-    char NACK_out_user[23] = "...error: still logged";
-
     uint16_t port = (uint16_t)atoi(argv[1]);
     uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
     printf("Aux port: %d\n", aux_udp_port);

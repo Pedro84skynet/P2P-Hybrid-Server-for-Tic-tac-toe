@@ -1,13 +1,16 @@
 /******************************************************************************
  *  Compilation:  (Use make)
- *  Execution:    ./EP2_Server port_number protocol
+ *  Execution:    ---
  *
- *  - port_number: port number used to connect in EP2_Servidor.
- *  - protocol   : "UDP" or "TCP"
  *
  *  DESCRIPTION
  *
- *  Auxiliars Functions for the server to handle requests
+ *  Auxiliars Functions for the server to handle requests, divided in two:
+ *
+ *    - Master Handler: used to modify log.txt and communicate with master
+ *      proccess;
+ *
+ *    - Client Handler: used by the server to communicate with client.
  *
  *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
  *
@@ -16,6 +19,7 @@
  *  - 
  *
  ******************************************************************************/
+
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,24 +40,8 @@
 
 #include "S_Aux_Handlers.h"
 #include "DB_Manag_Sys.h"
+#include "Protocol.h"
 
-char ACK_new_user[21]        = "...new user created!";
-char NACK_new_user[19]       = "...new user failed";
-char ACK_in_user[11]         = "...logged!";
-char NACK_in_user[47]        = "...not logged, username or password incorrect ";
-char ACK_newpass_user[25]    = "...new password created!";
-char NACK_newpass_user[35]   = "...error: new password not created";
-char ACK_out_user[15]        = "...logged out!";
-char NACK_out_user[23]       = "...error: still logged";
-char ACK_bye_user[8]         = "...bye!";
-char NACK_already_logged[19] = "...Already Logged!";
-char NACK_not_logged[26]     = "...you need to be logged!";
-char ACK_hallofame[21]       = "********************";
-char NACK_hallofame[30]      = "...hall of fame not available";
-char ACK_online_l[13]        = "...have fun!";
-char NACK_online_l[29]       = "...online list not available";
-
-char Ping[9]                 = "...ping";
 
 /*****************************************************************************************************/
 /*                                                                                                   */

@@ -1,3 +1,25 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ---
+ *
+ *
+ *  DESCRIPTION
+ *
+ *  Auxiliars Functions for the server to handle requests, divided in two:
+ *
+ *    - Master Handler: used to modify log.txt and communicate with master
+ *      proccess;
+ *
+ *    - Client Handler: used by the server to communicate with client.
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - 
+ *
+ ******************************************************************************/
+
 #ifndef C_AUX_HANDLERS_H
 #define C_AUX_HANDLERS_H
 

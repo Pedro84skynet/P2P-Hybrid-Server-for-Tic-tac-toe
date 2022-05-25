@@ -1,3 +1,22 @@
+/******************************************************************************
+ *  Compilation:  (Use make)
+ *  Execution:    ---
+ *
+ *
+ *  DESCRIPTION
+ *
+ *  Auxiliars Functions for the server to manage the database (database.txt)
+ *  and log (log.txt)
+ *
+ *
+ *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
+ *
+ *  List them bellow
+ *
+ *  - 
+ *
+ ******************************************************************************/
+
 #define _GNU_SOURCE         
 #include <stdio.h>
 #include <stdlib.h>
