@@ -53,6 +53,7 @@ char ACK_online_l[13]        = "...have fun!";
 char NACK_online_l[29]       = "...online list not available";
 
 char Ping[9]                 = "...ping";
+char Reconnect[36]           = "...starting reconnection procedure.";
 char Server_down[32]         = "...lost connection with server.";
 
 pid_t listener_process(int client_sockfd, bool is_udp,
@@ -68,11 +69,11 @@ pid_t listener_process(int client_sockfd, bool is_udp,
         printf("Erro: fork listener failed\n");
         exit(EXIT_FAILURE);
     }
-    if (listener == 0) // Is listener
+    if (listener == 0) 
     {
         len = sizeof(struct sockaddr_in);
         struct pollfd listen_poll_fd[1];
-        int timeout = 60*1000; //milésimo
+        int timeout = 3*60*1000; // 3 minutos
 
         n_bytes = 1;
         while (1) 
@@ -119,8 +120,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                     {
                         printf("\nServidor fechou a conexão tcp!\n");
                         close(client_sockfd);
-                        write(listener_pipe, (void *) Server_down, (size_t) sizeof(Server_down));
-                        sleep(10);
+                        write(listener_pipe, (void *) Reconnect, (size_t) sizeof(Reconnect));
                         return 0;
                     }
                 }
@@ -155,7 +155,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
     if (sender == 0) 
     {
         struct pollfd sender_poll_fd[1];
-        int timeout = 15*1000; //milésimo
+        int timeout = 15*1000; // 15 segundos para um ping
 
         n_bytes = 1;
         while (n_bytes)
@@ -177,7 +177,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                         (struct sockaddr *) serv_addr, (socklen_t ) sizeof(struct sockaddr_in));
                     if (n_bytes == -1)
                     {
-                        printf("Erro: sendto failed\n");
+                        printf("Error: sendto failed\n");
                         exit(EXIT_FAILURE);
                     }
                 } 
@@ -186,7 +186,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                     n_bytes = send(client_sockfd, (void *) Ping, sizeof(Ping), 0);
                     if (n_bytes == -1)
                     {
-                        printf("Erro: send failed\n");
+                        printf("Error: send failed\n");
                         exit(EXIT_FAILURE);
                     }
                 }
@@ -239,7 +239,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
         printf("Erro: fork front_end failed\n");
         exit(EXIT_FAILURE);
     }
-    if (front_end == 0) // Is front_end
+    if (front_end == 0) 
     {
         bool invalid_command = true;
         bool need_loop = false;
@@ -355,4 +355,99 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
         exit(EXIT_SUCCESS);
     }
     return front_end;
+}
+
+int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_addr)
+{
+    socklen_t len;
+    ssize_t n_bytes;
+
+    /*Protocolos: */
+    unsigned char CONNECT;
+    unsigned char ACK_NACK;
+    uint16_t CHANGE_PORT;
+
+    if (is_udp)
+    {
+        if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
+        {
+            printf("Error: socket not created\n");
+            return -1;
+        }
+        if (sendto(client_sockfd, (const char *) &CONNECT, sizeof(CONNECT), 0, 
+                    (const struct sockaddr *) serv_addr, sizeof(struct sockaddr_in)) == -1)
+        {
+            printf("Error: sendto failed!\n");
+            return -1;
+        }
+        printf("    enviou CONNECT %d\n", CONNECT);
+        len = sizeof(struct sockaddr_in);
+        if (recvfrom(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0, 
+                        (struct sockaddr *) serv_addr, &len) == -1)
+        {
+            printf("Error: recvfrom failed!\n");
+            return -1;
+        }
+        if (ACK_NACK == 1)
+        {
+            printf("    Alcançou o servidor.\n");
+        }
+        else
+        {
+            return -1;
+        }
+        if (recvfrom(client_sockfd, (void*) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
+                        (struct sockaddr *) serv_addr, &len) == -1)
+        {
+            printf("Error: recvfrom failed!\n");
+            return -1;
+        }
+        if (CHANGE_PORT != 0)
+        {
+            close(client_sockfd);
+            printf("Changing to aux port: %d\n", ntohs(CHANGE_PORT));
+            bzero(serv_addr, sizeof(struct sockaddr_in));
+            (*serv_addr).sin_family = AF_INET;
+            (*serv_addr).sin_port = CHANGE_PORT;
+            (*serv_addr).sin_addr.s_addr = inet_addr("192.168.15.15");
+            if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
+            {
+                printf("Error: socket not created\n");
+                return -1;
+            }
+        }
+        return client_sockfd;
+    }
+    /*  TCP    _______________________________________________________________*/
+    else
+    {
+        if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
+        {
+            printf("Error: socket not created\n");
+            return -1;
+        }
+        if ((connect(client_sockfd, (const struct sockaddr *) serv_addr,
+                        sizeof(struct sockaddr_in))) == -1)
+        {
+            printf("Error: connect failed\n");
+            return -1;
+        }
+        printf("Connect success.\n");
+        if (send(client_sockfd, (const char *) &CONNECT, sizeof(CONNECT), 0) == -1)
+        {
+            printf("Error: send failed!\n");
+            return -1;
+        }
+        printf("    enviou CONNECT %d\n", CONNECT);
+        if (recv(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0) == -1)
+        {
+            printf("Error: recv failed!\n");
+            return -1;
+        }
+        if (ACK_NACK == 1)
+        {
+            printf("    Alcançou o servidor.\n");
+            return client_sockfd;
+        }
+    }
 }

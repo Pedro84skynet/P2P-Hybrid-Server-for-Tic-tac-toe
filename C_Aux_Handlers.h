@@ -13,20 +13,22 @@ struct client_info {
     uint16_t port;
     uint16_t P2P_port;
     bool main;
-};
+}; 
 
-
-/*    LISTENER PROCESS                                                        */
+/*    LISTENER PROCESS                                                         */
 pid_t listener_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
                         int listener_pipe);
 
-/*    SENDER PROCESS                                                          */
+/*    SENDER PROCESS                                                           */
 pid_t sender_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
                         int sender_pipe);
 
-/*    FRONT END PROCESS                                                       */
+/*    FRONT END PROCESS                                                        */
 pid_t front_end_process(int back_end_pipe, int front_end_pipe);
+
+/*    CONNECT PROCEDURE                                                        */
+int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_addr);
 
 #endif

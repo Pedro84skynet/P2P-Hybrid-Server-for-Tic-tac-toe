@@ -255,6 +255,7 @@ int halloffame_sender(int pipe)
         write(pipe, (void *) line, (size_t) sizeof(line));
         printf("halloffame_sender: line sended: %s strlen: %ld\n",line, strlen(line));
         memset((void *)line, 0, 64);
+        usleep(20000);
     }
     fclose(fp);
     return 0;
@@ -290,6 +291,7 @@ int l_sender(int pipe)
             }   
             write(pipe, (void *) line, (size_t) sizeof(line));
             printf("l_sender: line sended: %s strlen: %ld\n",line, strlen(line));
+            usleep(20000);
         }
         memset((void *)line, 0, 64);
     }

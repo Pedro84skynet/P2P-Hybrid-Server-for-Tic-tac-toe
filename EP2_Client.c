@@ -7,7 +7,7 @@
  *
  *  DESCRIPTION
  *
- *  A brief description about what is implemented.
+ *  A client to tic-tac-toe local network game.
  *
  *  PROJECT DECISIONS OR UNFINISHED TASKS (?)
  *
@@ -65,9 +65,10 @@ int main(int argc, char ** argv)
     char NACK_online_l[29]       = "...online list not available";
 
     char Ping[9]                 = "...ping";
+    char Reconnect[36]           = "...starting reconnection procedure.";
     char Server_down[32]         = "...lost connection with server.";
 
-    // Message error
+    // Error Message 
     if (argc < 2) {
         printf("usage: ./EP2_Client port_number protocol\n");
         printf("examples with port = 8000:\n");
@@ -77,28 +78,29 @@ int main(int argc, char ** argv)
     }
 
     socklen_t len;
-    ssize_t nbytes;
+    ssize_t n_bytes;
     int client_sockfd, listen_fd, player_fd;
-    struct sockaddr_in serv_addr, player2_addr;
     uint16_t port;
 
     struct client_info other_player;
 
-    /*Protocolos: */
+    /*
+        Basic Protocolos. 
+    */
     unsigned char CONNECT;
     unsigned char ACK_NACK;
     uint16_t CHANGE_PORT;
 
     CONNECT = 1;
 
+    struct sockaddr_in serv_addr;
+    memset((void *)&serv_addr, 0,(size_t) sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(atoi(argv[1]));
     //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
     serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
 
-
     char user_input[64], user_input_copy[64];
-    //char * user_input_copy;
     char * command;
     char * username;
     char * password;
@@ -116,9 +118,11 @@ int main(int argc, char ** argv)
 
     struct client_info player1;
 
-    ssize_t n_bytes;
     pid_t sender, listener, front_end;
 
+    /* 
+        Pipes for communication between processes
+    */
     int listener_pipe[2]; // listener_pipe[0] <- Read; listener_pipe[1] <- Write;
     pipe(listener_pipe);
     int sender_pipe[2]; // sender_pipe[0] <- Read; sender_pipe[1] <- Write;
@@ -136,12 +140,9 @@ int main(int argc, char ** argv)
     struct pollfd poll_fd[2];
     int ret;
 
-
-    /**************************************************************************
-
-     Checks the protocol and if client connected to server
-
-    ***************************************************************************/
+    /*
+        Checks the protocol and if client connected to server
+    */
     if (!strncmp("UDP", argv[2], 3) || 
         !strncmp("udp", argv[2], 3) || 
         !strncmp("Udp", argv[2], 3)) 
@@ -159,95 +160,29 @@ int main(int argc, char ** argv)
         printf("Protocolo não utilizado.\n");
         exit(EXIT_FAILURE);
     } 
-    /*  UDP    _______________________________________________________________*/
-    if (is_udp)
+
+    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr);
+    if (client_sockfd == -1)
     {
-        if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
-        {
-            printf("Error: socket not created\n");
-            exit(EXIT_FAILURE);
-        }
-        if (sendto(client_sockfd, (const char *) &CONNECT, sizeof(CONNECT), 0, 
-                    (const struct sockaddr *) &serv_addr, sizeof(serv_addr)) == -1)
-        {
-            printf("Error: sendto failed!\n");
-            exit(EXIT_FAILURE);
-        }
-        printf("    enviou CONNECT %d\n", CONNECT);
-        len = sizeof(serv_addr);
-        if (recvfrom(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0, 
-                        (struct sockaddr *) &serv_addr, &len) == -1)
-        {
-            printf("Error: recvfrom failed!\n");
-            exit(EXIT_FAILURE);
-        }
-        if (ACK_NACK == 1)
-        {
-            printf("    Alcançou o servidor.\n");
-        }
-        if (recvfrom(client_sockfd, (void*) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
-                        (struct sockaddr *) &serv_addr, &len) == -1)
-        {
-            printf("Error: recvfrom failed!\n");
-            exit(EXIT_FAILURE);
-        }
-        if (CHANGE_PORT != 0)
-        {
-            close(client_sockfd);
-            printf("Changing to aux port: %d\n", ntohs(CHANGE_PORT));
-            bzero(&serv_addr, sizeof(serv_addr));
-            serv_addr.sin_family = AF_INET;
-            serv_addr.sin_port = CHANGE_PORT;
-            serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
-            if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
-            {
-                printf("Error: socket not created\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
-    /*  TCP    _______________________________________________________________*/
-    else
-    {
-        if ((client_sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
-        {
-            printf("Error: socket not created\n");
-            exit(EXIT_FAILURE);
-        }
-        if ((connect(client_sockfd, (const struct sockaddr *) &serv_addr,
-                        sizeof(serv_addr))) == -1)
-        {
-            printf("Error: connect failed\n");
-            exit(EXIT_FAILURE);
-        }
-        if (send(client_sockfd, (const char *) &CONNECT, sizeof(CONNECT), 0) == -1)
-        {
-            printf("Error: send failed!\n");
-            exit(EXIT_FAILURE);
-        }
-        printf("    enviou CONNECT %d\n", CONNECT);
-        if (recv(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0) == -1)
-        {
-            printf("Error: recv failed!\n");
-            exit(EXIT_FAILURE);
-        }
-        if (ACK_NACK == 1)
-        {
-            printf("    Alcançou o servidor.\n");
-        }
+        printf("Error: connection failed!\n");
+        exit(EXIT_FAILURE);
     }
 
-    
-
-    listener = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
-    sender = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
+    /* 
+        Initialize auxiliars processes
+    */
+    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
+    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
     front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
     if (listener == 0 || sender == 0 || front_end == 0)
     {
         return 0;
     }
-    
-    while(1) // Is Main
+
+    /* 
+        Main process
+    */
+    while(1) 
     {
         poll_fd[0].fd = front_end_pipe[0];
         poll_fd[0].events = POLLIN;
@@ -298,6 +233,48 @@ int main(int argc, char ** argv)
                 sleep (2);
                 kill (front_end, SIGKILL);
                 return 0; 
+            } 
+            else if (!strncmp(server_message, Reconnect, sizeof(Reconnect)))
+            {
+                /*  
+                    Reconnection procedure
+                */
+                printf("\n%s\n", server_message);
+                write (back_end_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                kill(sender, SIGKILL);
+                kill(listener, SIGKILL);
+                kill(front_end, SIGKILL);
+                close(client_sockfd);
+
+                int try_c = 0;
+                client_sockfd = -1;
+                while (client_sockfd == -1 && try_c < 59)
+                {
+                    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr); 
+                    sleep(3);
+                    try_c++;
+                    printf("...attempt %d/60: ", try_c);
+                }
+                if(client_sockfd == -1) 
+                {
+                    printf("\n%s\n", Server_down);
+                    exit(EXIT_SUCCESS);
+                }
+                else 
+                {
+                    printf("Connection restabilished!\n");
+                    /* 
+                        Initialize auxiliars processes
+                    */
+                    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
+                    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
+                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
+                    if (listener == 0 || sender == 0 || front_end == 0)
+                    {
+                        return 0;
+                    }
+                }
+                printf("...Back to normal with server!\n");
             }
             strncpy(processed_message, server_message, 64);
             write(back_end_pipe[1], (void *) processed_message, (size_t) sizeof(processed_message));

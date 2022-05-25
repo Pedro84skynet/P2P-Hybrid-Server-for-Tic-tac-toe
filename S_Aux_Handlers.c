@@ -287,8 +287,9 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
     
         if(is_udp)
         {
-            if ((n_bytes = recvfrom(udp_fd, (void *) client_message, sizeof(client_message), 0,
-                (struct sockaddr *) &addr, (socklen_t *) &len) == -1))
+            n_bytes = recvfrom(udp_fd, (void *) client_message, sizeof(client_message), 0,
+                                (struct sockaddr *) &addr, (socklen_t *) &len);
+            if (n_bytes == -1)
             {
                 printf("Erro: recvfrom from udp_client_handler failed\n");
                 exit(EXIT_FAILURE);
@@ -296,7 +297,9 @@ int client_handler(bool is_udp, int pipe_read, int pipe_write, uint16_t port, in
             port = addr.sin_port;
             write(list_to_send_pipe[1],(void *) &port, sizeof(port));
             printf("Listener: Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
+            client_message[n_bytes + 1] = '\0';
             printf("Listener recebeu do socket: %s\n", client_message);
+            printf("    n_bytes: %d\n", (int) n_bytes);
             if (strncmp(client_message, Ping, sizeof(Ping)))
             {
                 write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
