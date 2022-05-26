@@ -178,30 +178,32 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                 (sender_poll_fd[0].fd = sender_pipe))
             {
                 memset((void *)client_message, 0, sizeof(client_message));
-                read(sender_pipe, (void *) client_message, (size_t) sizeof(client_message));
+                read(sender_pipe, (void *) client_message, sizeof(client_message));
                 if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", client_message);
-
-                if (is_udp)
+                if (strlen(client_message))
                 {
-                    n_bytes = sendto(client_sockfd, (void *) client_message, strlen(client_message), 0,
-                        (struct sockaddr *) serv_addr, (socklen_t ) sizeof(struct sockaddr_in));
-                    if (n_bytes == -1)
+                    if (is_udp)
                     {
-                        printf("Erro: sendto failed\n");
-                        exit(EXIT_FAILURE);
-                    }
-                } 
-                else 
-                {
-                    n_bytes = send(client_sockfd, (void *) client_message, strlen(client_message), 0);
-                    if (n_bytes == -1)
+                        n_bytes = sendto(client_sockfd, (void *) client_message, strlen(client_message), 0,
+                            (struct sockaddr *) serv_addr, (socklen_t ) sizeof(struct sockaddr_in));
+                        if (n_bytes == -1)
+                        {
+                            printf("Erro: sendto failed\n");
+                            exit(EXIT_FAILURE);
+                        }
+                    } 
+                    else 
                     {
-                        printf("Erro: send failed\n");
-                        exit(EXIT_FAILURE);
+                        n_bytes = send(client_sockfd, (void *) client_message, strlen(client_message), 0);
+                        if (n_bytes == -1)
+                        {
+                            printf("Erro: send failed\n");
+                            exit(EXIT_FAILURE);
+                        }
                     }
+                    if(DEBUG) printf("[Sender]    .... Sender enviou mensagem para Servidor\n");
+                    if(DEBUG) printf("[Sender]    n_bytes: %d\n", (int) n_bytes);
                 }
-                if(DEBUG) printf("[Sender]   .... Sender enviou mensagem para Servidor\n");
-                if(DEBUG) printf("[Sender]    n_bytes: %d\n", (int) n_bytes);
             }
         }
         exit(EXIT_SUCCESS);
@@ -275,6 +277,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     invalid_command = false;
                     player2 = strtok(NULL, " ");
                     strncpy(other_player_name, player2, strlen(player2));
+                    other_player_name[strlen(player2)] = '\0';
                     if(DEBUG) printf ("[Front-end] other_player_name: %s\n", other_player_name);
                 } 
             /*  PLAY    __________________________________________________________________*/

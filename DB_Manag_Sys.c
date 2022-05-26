@@ -269,7 +269,7 @@ int halloffame_sender(int pipe)
         pass = strtok(NULL, " ");
         score = strtok(NULL, " ");
         sprintf(line, "%s %s", user, score);
-        write(pipe, (void *) line, (size_t) sizeof(line));
+        write(pipe, (void *) line, sizeof(line));
         memset((void *)line, 0, 64);
         usleep(20000);
     }
@@ -305,7 +305,7 @@ int l_sender(int pipe)
             {
                 sprintf(line, "%s | não", user);
             }   
-            write(pipe, (void *) line, (size_t) sizeof(line));
+            write(pipe, (void *) line, sizeof(line));
             usleep(20000);
         }
         memset((void *)line, 0, 64);

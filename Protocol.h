@@ -44,6 +44,11 @@
 #define ACK_accept           "...accepted!"
 #define NACK_accept          "...not accepted!"
 #define NACK_online          "...this player is not online!"
+#define Game_over            "...rage quit?"
+#define Draw                 "...draw!"
+#define I_win                "...have_won!"
+#define You_won              "...You won! ...congratulations!"
+#define You_lose             "...You lose"
 
 #endif
 

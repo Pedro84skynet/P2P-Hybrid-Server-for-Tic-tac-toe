@@ -311,6 +311,16 @@ int main(int argc, char ** argv)
                 if(DEBUG) printf("[Main Process] mh_return == 8\n");
                 write(player2_rd[1], ACK_accept, sizeof(ACK_accept));
             }
+            if (mh_return == 12) // call to other player.
+            {
+                if(DEBUG) printf("[Main Process] mh_return == 12\n");
+                write(player2_rd[1], You_lose, sizeof(You_lose));
+            }
+            if (mh_return == 13) // call to other player.
+            {
+                if(DEBUG) printf("[Main Process] mh_return == 12\n");
+                write(player2_rd[1], Draw, sizeof(Draw));
+            }
             memset(client_message, 0, (size_t) sizeof(client_message));
         }
         else if ((fd[1].revents == POLLIN) && fd[1].fd == player2_wr[0])
@@ -331,6 +341,16 @@ int main(int argc, char ** argv)
             {
                 if(DEBUG) printf("[Main Process] mh_return == 8\n");
                 write(player1_rd[1], ACK_accept, sizeof(ACK_accept));
+            }
+            if (mh_return == 12) // call to other player.
+            {
+                if(DEBUG) printf("[Main Process] mh_return == 12\n");
+                write(player1_rd[1], You_lose, sizeof(You_lose));
+            }
+            if (mh_return == 13) // call to other player.
+            {
+                if(DEBUG) printf("[Main Process] mh_return == 12\n");
+                write(player1_rd[1], Draw, sizeof(Draw));
             }
             memset(client_message, 0, sizeof(client_message));
         } 

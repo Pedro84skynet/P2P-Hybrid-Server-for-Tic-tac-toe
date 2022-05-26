@@ -43,21 +43,23 @@
 #include "Protocol.h"
 
 
-/*****************************************************************************************************/
-/*                                                                                                   */
-/*    MASTER HANDLER                                                                                 */
-/*                                                                                                   */
-/*****************************************************************************************************/ 
+/**************************************************************************************/
+/*                                                                                    */
+/*    MASTER HANDLER                                                                  */
+/*                                                                                    */
+/**************************************************************************************/
 int master_handler(int player_rd, char * client_message, bool DEBUG)
 {
     if(DEBUG) printf("[Master handler] receive: %s\n", client_message);
     unsigned char client_message_copy[64];
     unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
+    unsigned char * winner, * loser; 
     char event[64];
     
     strncpy(client_message_copy, client_message, strlen(client_message));
     client_message_copy[strlen(client_message)] = '\0';
     command = strtok(client_message_copy, " ");
+     if(DEBUG)printf("[Master handler]  command: %s\n", command);
 /*  NEW    ___________________________________________________________________*/
     if (!strncmp(command, "new", 3)) 
     {
@@ -196,7 +198,7 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
         }
         if(change_data(token, 3))
         {
-            sprintf(event,"Error: Database failed to logged out user %s.", token);
+            sprintf(event,"Error: Database failed add score to user %s.", token);
             log_event(event);
         }
         else
@@ -206,7 +208,6 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
         }
         return 8;
     }
-    
 /*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
@@ -245,7 +246,57 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
             write(player_rd, NACK_out_user, sizeof(NACK_out_user));
         }
         return 11;
-    }  
+    } 
+/*  I_win    __________________________________________________________________*/
+    else if (!strncmp(command, I_win, sizeof(I_win))) 
+    {
+        winner = strtok(NULL, " "); 
+        loser = strtok(NULL, " ");
+        if(DEBUG) printf("[Master handler] winner:%s loser: %s\n", winner, loser);
+        sprintf(event,"Game Over: winner: %s loser: %s", winner, loser);
+        log_event(event);
+        write(player_rd, You_won, sizeof(You_won));
+        if(change_data(winner, 1))
+        {
+            sprintf(event,"Error: Database failed add score to user %s.", user);
+            log_event(event);
+        }
+        if(change_data(winner, 3))
+        {
+            sprintf(event,"Error: Database failed quit game user %s.", token);
+            log_event(event);
+        }
+        if(change_data(loser, 3))
+        {
+            sprintf(event,"Error: Database failed quit game user %s.", token);
+            log_event(event);
+        }
+        return 12;
+    } 
+/*  Game_over    ______________________________________________________________*/
+/*  Draw    ___________________________________________________________________*/
+    else if ((!strncmp(command, Game_over, sizeof(Game_over))) ||
+             (!strncmp(command, Draw, sizeof(Draw)))) 
+    {
+        winner = strtok(NULL, " ");
+        winner[strlen(winner)] = '\0';
+        loser = strtok(NULL, " ");
+        loser[strlen(loser)] = '\0';
+        if(DEBUG) printf("[Master handler] draw between %s and %s\n", winner, loser);
+        sprintf(event,"Game Over: Draw between %s and %s", winner, loser);
+        log_event(event);
+        if(change_data(winner, 3))
+        {
+            sprintf(event,"Error: Database failed quit game user %s.", token);
+            log_event(event);
+        }
+        if(change_data(loser, 3))
+        {
+            sprintf(event,"Error: Database failed quit game user %s.", token);
+            log_event(event);
+        }
+        return 13;
+    }
 }
 
 
@@ -590,7 +641,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             }
 
         /*
-            Processa mensagem do main do servidor, return server_message;
+            Processa mensagem do main do servidor, return server_message; 
         */
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {

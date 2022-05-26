@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 #include "C_Aux_Handlers.h"
 #include "Hash_Game.h"
@@ -97,10 +98,10 @@ int main(int argc, char ** argv)
     own_addr.sin_port = htons(atoi(argv[1]) +1);
     own_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    char user_input[64], user_input_copy[64];
+    char username[32], othername[32];
     char * command;
-    char * username;
-    char * othername;
+    char * user_name;
+    char * other_name;
     char * other_ip;
     char * password;
     char accept_call;
@@ -134,7 +135,7 @@ int main(int argc, char ** argv)
 
     unsigned char client_message[64]; 
     unsigned char server_message[64]; 
-    unsigned char processed_message[64]; 
+    unsigned char processed_message[128]; 
 
     struct pollfd poll_fd[2];
     int ret;
@@ -178,9 +179,10 @@ int main(int argc, char ** argv)
         return 0;
     }
 
-    /* 
-        Main process
-    */
+/*  ________________________________________________________________________________________________
+    MAIN PROCESS
+    ________________________________________________________________________________________________
+*/
     while(1) 
     {
         poll_fd[0].fd = front_end_pipe[0];
@@ -195,33 +197,179 @@ int main(int argc, char ** argv)
             printf("Error: poll from handler failed");
             exit(EXIT_FAILURE);
         }
-        /*
-            Processa mensagem do front_end_pipe e envia para sender, return client_message;
-        */
+
+
+    /*  ________________________________________________________________________________________________
+        FRONT_END_PIPE
+        Processa mensagem do front-end, return processed_message;
+        ________________________________________________________________________________________________
+    */
         if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == front_end_pipe[0]))
         {
-            read(front_end_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
+            read(front_end_pipe[0], (void *) client_message, sizeof(client_message));
             if(DEBUG) printf("[Main process] Main recebeu do front_end: %s\n", client_message);
             
             if (!strncmp (client_message, "bye", 3)) 
             {
                 printf("Bye command ...exiting!\n");
-                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
-                sleep (1);
+                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                sleep (3);
+                // closing pipes
+                close(client_sockfd);
+                close(listener_pipe[0]); close(listener_pipe[1]);
+                close(sender_pipe[0]); close(sender_pipe[1]);
+                close(front_end_pipe[0]); close(front_end_pipe[1]);
+                close(back_end_pipe[0]); close(back_end_pipe[1]);
+                // killing aux's
                 kill(sender, SIGKILL);
                 kill(listener, SIGKILL);
                 // front end terminates itself (return 0)
                 return 0;
             }
+            else if (!strncmp (client_message, "call", 4))
+            {
+                kill(front_end, SIGKILL);
+                strncpy(processed_message, client_message, sizeof(client_message));
+                command = strtok(processed_message, " ");
+                other_name  = strtok(NULL, " ");
+                strncpy(othername, other_name, strlen(other_name));
+                othername[strlen(other_name)] = '\0';
+                if(DEBUG) printf("[Main process] othername: %s\n", othername);
+                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                usleep(50000);
+            }
+            else if (!strncmp (client_message, "play", 4))
+            {
+                command = strtok(client_message, " ");
+                line = atoi(strtok(NULL, " "));
+                column = atoi(strtok(NULL, " "));
+                if (game_end == 0 && tie > 0) 
+                {
+                    if (is_player1) hashtable = hash_game(hashtable, 'X', line, column);
+                    else hashtable = hash_game(hashtable, 'O', line, column);
+                    if (send(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
+                    {
+                        printf("Error: sending failed");
+                        exit(EXIT_FAILURE);
+                    }
+                    tie--;
+                    print_hash_table(hashtable);
+                    game_end = hash_winner(hashtable);
+                    if(DEBUG) printf("[Main process] game_end: %d tie:  %d", game_end, tie);
+                    if (game_end == 0 && tie > 0)
+                    {
+                        kill(front_end, SIGKILL);
+                        if (recv(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
+                        {
+                            printf("Error: receive failed");
+                            exit(EXIT_FAILURE);
+                        }
+                        if (hashtable[0] == 0)
+                        {
+                            if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
+                            write(sender_pipe[1], (void *) Game_over, sizeof(Game_over));
+                            continue;
+                        }
+                        print_hash_table(hashtable);
+                        game_end = hash_winner(hashtable);
+                    }
+                } 
+                if (is_player1)
+                {
+                    if (game_end || tie < 0)
+                    {
+                        if (game_end == 'X') 
+                        {
+                            // printf("\n\nVocê Venceu!\n\n"); 
+                            memset((void *) processed_message, 0, sizeof(processed_message));
+                            sprintf(processed_message, "%s %s %s", I_win, username, othername);
+                            if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
+                            processed_message[strlen(processed_message)] = '\0';
+                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                        }
+                        // if (game_end == 'O') printf("\n\nVocê Perdeu!\n\n");
+                        if (!game_end && tie < 0) 
+                        {
+                            // printf("\n\nEmpate!\n\n");
+                            memset((void *) processed_message, 0, sizeof(processed_message));
+                            sprintf(processed_message, "%s %s %s",Draw, username, othername);
+                            if(DEBUG) printf("[Main process] draw processed_message: %s!\n", processed_message);
+                            processed_message[strlen(processed_message)] = '\0';
+                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                        }
+                        game_on = false;
+                        game_end = 0;
+                        tie = 5;
+                        free(hashtable);
+                        read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+                        server_message[strlen(server_message)] = '\0';
+                        printf("    %s\n\n", server_message);
+                        is_player1 = false;
+                    }   
+                }
+                else
+                {
+                    if (game_end || tie < 1)
+                    {
+                        if (game_end == 'O') 
+                        {
+                            //printf("\n\nVocê Venceu!\n\n");
+                            memset((void *) processed_message, 0, sizeof(processed_message));
+                            sprintf(processed_message, "%s %s %s",I_win, username, othername);
+                            if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
+                            processed_message[strlen(processed_message)] = '\0';
+                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                        }
+                        // if (game_end == 'X') printf("\n\nVocê Perdeu!\n\n");
+                        // if (!game_end && tie < 1) printf("\n\nEmpate!\n\n");
+                        game_on = false;
+                        game_end = 0;
+                        tie = 5;
+                        free(hashtable);
+                        read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+                        server_message[strlen(server_message)] = '\0';
+                        printf("    %s\n\n", server_message);
+                    }
+                }
+                front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
+                if (front_end == 0)
+                {
+                    return 0;
+                }
+            }
+            else if (!strncmp (client_message, "in", 2))
+            {
+                strncpy(processed_message, client_message, sizeof(client_message));
+                command = strtok(processed_message, " ");
+                user_name  = strtok(NULL, " ");
+                strncpy(username, user_name, strlen(user_name));
+                username[strlen(user_name)] = '\0';
+                if(DEBUG) printf("[Main process] username: %s\n", username);
+                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                usleep(50000);
+            }
+            else if (!strncmp (client_message, "call", 4))
+            {
+                strncpy(processed_message, client_message, sizeof(client_message));
+                command = strtok(processed_message, " ");
+                other_name  = strtok(NULL, " ");
+                strncpy(othername, other_name, strlen(other_name));
+                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                usleep(50000);
+            }
             else 
             {
-                write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
                 usleep(50000);
             }
         }
-        /*
-            Processa mensagem do listener, return processed_message;
-        */
+
+
+    /*  ________________________________________________________________________________________________
+        LISTENER_PIPE
+        Processa mensagem do listener, return processed_message;
+        ________________________________________________________________________________________________
+    */
         if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
         {
             read(listener_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
@@ -231,12 +379,13 @@ int main(int argc, char ** argv)
         /*  CALL  */
             if (!strncmp (server_message, "call", 4))
             {
-                memset((void *) processed_message, 0, sizeof(processed_message));
-                strncpy(processed_message, server_message, strlen(server_message));
-                processed_message[strlen(server_message)] = '\0';
-                command = strtok(processed_message, " "); 
-                username = strtok(NULL, " "); 
-                othername = strtok(NULL, " ");
+                // memset((void *) processed_message, 0, sizeof(processed_message));
+                // strncpy(processed_message, server_message, strlen(server_message));
+                server_message[strlen(server_message)] = '\0';
+                command = strtok(server_message, " "); 
+                user_name = strtok(NULL, " "); 
+                other_name = strtok(NULL, " ");
+                strncpy(othername, other_name, sizeof(other_name));
                 other_ip = strtok(NULL, " ");
                 if(DEBUG) printf("[Main process] other_ip: %s\n", other_ip);
                 kill(front_end, SIGKILL);
@@ -246,10 +395,12 @@ int main(int argc, char ** argv)
                 getchar();
                 if (accept_call == 'y')
                 {
-                    memset((void *) server_message, 0, sizeof(server_message));
-                    sprintf(server_message, "%s %s %s", ACK_accept, username, othername);
-                    server_message[strlen(server_message)] = '\0';
-                    write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                    memset((void *) processed_message, 0, sizeof(processed_message));
+                    sprintf(processed_message, "%s %s %s", ACK_accept, user_name, othername);
+                    processed_message[strlen(processed_message)] = '\0';
+                    if(DEBUG) printf("[Main process] call processed %s len: %zu\n", server_message,
+                                        strlen(processed_message));
+                    write(sender_pipe[1], (void *) processed_message, sizeof(processed_message));
                     own_addr.sin_addr.s_addr = inet_addr(other_ip);
                     sleep(2);
                     if ((player_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
@@ -292,8 +443,25 @@ int main(int argc, char ** argv)
                         if (ACK_NACK == 1)
                         {
                             printf("    Alcançou o outro jogador!.\n");
+                            hashtable = (unsigned char *) malloc(sizeof(unsigned char)*9);
+                            for (int i = 0; i < 9; i++) hashtable[i] = 32;
+                            kill(front_end, SIGKILL);
+                            print_hash_table(hashtable);
+                            if (recv(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
+                            {
+                                printf("Error: receive failed");
+                                exit(EXIT_FAILURE);
+                            }
+                            if (hashtable[0] == 0)
+                            {
+                                if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
+                                write(sender_pipe[1], (void *) Game_over, sizeof(Game_over));
+                                continue;
+                            }
+                            print_hash_table(hashtable);
                         }
                     }
+                    memset((void *) server_message, 0, sizeof(server_message));
                     front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
                     if (front_end == 0)
                     {
@@ -302,12 +470,13 @@ int main(int argc, char ** argv)
                 }
                 else
                 {
+                    memset((void *) server_message, 0, sizeof(server_message));
                     write(sender_pipe[1], (void *) NACK_accept, (size_t) sizeof(NACK_accept));
                 } 
             }
+        /*  call accepted  */
             else if (!strncmp (server_message, ACK_accept, sizeof(ACK_accept)))
             {
-                write(back_end_pipe[1], (void *) ACK_accept, (size_t) sizeof(ACK_accept));
                 if ((listen_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1 )
                 {
                     printf("Error: socket not created");
@@ -343,12 +512,41 @@ int main(int argc, char ** argv)
                         exit(EXIT_FAILURE);
                     }
                     if(DEBUG) printf("[Main process] TCP client connected\n");
+                    is_player1 = true;
+                    hashtable = (unsigned char *) malloc(sizeof(unsigned char)*9);
+                    for (int i = 0; i < 9; i++) hashtable[i] = 32;
+                    print_hash_table(hashtable);
+                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
+                    if (front_end == 0)
+                    {
+                        return 0;
+                    }
+                    sleep(1);
+                    write(back_end_pipe[1], (void *) ACK_accept, (size_t) sizeof(ACK_accept));
                 }
             }
-            // else if (!strncmp (server_message, NACK_online, sizeof(NACK_online)))
-            // { 
-
-            // }
+        /*  call rejected  or not online*/
+            else if (!strncmp (server_message, NACK_accept, sizeof(NACK_accept)))
+            {
+                front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
+                if (front_end == 0)
+                {
+                    return 0;
+                }
+                sleep(1);
+                write(back_end_pipe[1], (void *) NACK_accept, (size_t) sizeof(NACK_accept));
+            }
+        /*  Not online*/
+            else if (!strncmp (server_message, NACK_online, sizeof(NACK_online)))
+            {
+                front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
+                if (front_end == 0)
+                {
+                    return 0;
+                }
+                sleep(1);
+                write(back_end_pipe[1], (void *) NACK_online, (size_t) sizeof(NACK_online));
+            }
         /*  Server Down  */
             else if (!strncmp (server_message, Server_down, sizeof(Server_down)))
             {
@@ -403,6 +601,7 @@ int main(int argc, char ** argv)
             else
             {
                 write(back_end_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                memset((void *) server_message, 0, sizeof(server_message));
                 usleep(50000);
             }
         }

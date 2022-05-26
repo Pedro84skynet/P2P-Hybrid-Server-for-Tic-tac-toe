@@ -20,8 +20,11 @@ unsigned char * hash_game(unsigned char * hashtable, unsigned char symbol,
             printf("Jogue novamente: \n");
             printf("linha: ");
             scanf("%d", &line);
+            getchar();
+            printf("\n");
             printf("coluna: ");
             scanf("%d", &column);
+            getchar();
         }
     }
     return hashtable;
