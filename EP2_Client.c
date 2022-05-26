@@ -37,6 +37,7 @@
 #include "Hash_Game.h"
 #include "Protocol.h"
 
+static bool DEBUG = false;
 
 // Para o Cliente: 
 //     TCP Client: socket[] -> connect[] -> send[] || receive[]
@@ -57,6 +58,14 @@ int main(int argc, char ** argv)
         printf("    Protocol TCP:         ./EP2_Client 8000 TCP\n");
         printf("    Protocol UDP:         ./EP2_Client 8000 UDP\n");
         exit(0);
+    }
+
+    for (int i = 0; i < argc; i++)
+    {
+        if (!strncmp(argv[i], "-d", 2) || !strncmp(argv[i], "-D", 2))
+        {
+            DEBUG = true;
+        }
     }
 
     socklen_t len;
@@ -151,7 +160,7 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     } 
 
-    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr);
+    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG);
     if (client_sockfd == -1)
     {
         printf("Error: connection failed!\n");
@@ -161,9 +170,9 @@ int main(int argc, char ** argv)
     /* 
         Initialize auxiliars processes
     */
-    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
-    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
-    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
+    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1], DEBUG);
+    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0], DEBUG);
+    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
     if (listener == 0 || sender == 0 || front_end == 0)
     {
         return 0;
@@ -192,9 +201,10 @@ int main(int argc, char ** argv)
         if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == front_end_pipe[0]))
         {
             read(front_end_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
-            printf("Main recebeu do front_end: %s\n", client_message);
+            if(DEBUG) printf("[Main process] Main recebeu do front_end: %s\n", client_message);
             
-            if (!strncmp (client_message, "bye", 3)) {
+            if (!strncmp (client_message, "bye", 3)) 
+            {
                 printf("Bye command ...exiting!\n");
                 write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
                 sleep (1);
@@ -203,7 +213,8 @@ int main(int argc, char ** argv)
                 // front end terminates itself (return 0)
                 return 0;
             }
-            else {
+            else 
+            {
                 write(sender_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
                 usleep(50000);
             }
@@ -214,7 +225,7 @@ int main(int argc, char ** argv)
         if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
         {
             read(listener_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-            printf("Main recebeu do main_pipe: %s\n", server_message);
+            if(DEBUG) printf("[Main process] Main recebeu do main_pipe: %s\n", server_message);
         
         /*  Specials Cases*/
         /*  CALL  */
@@ -227,7 +238,7 @@ int main(int argc, char ** argv)
                 username = strtok(NULL, " "); 
                 othername = strtok(NULL, " ");
                 other_ip = strtok(NULL, " ");
-                printf("other_ip: %s\n", other_ip);
+                if(DEBUG) printf("[Main process] other_ip: %s\n", other_ip);
                 kill(front_end, SIGKILL);
                 printf("Invitation for game received from %s!\n", othername);
                 printf("    ...accept? (y/n): ");
@@ -266,13 +277,13 @@ int main(int argc, char ** argv)
                     }
                     else
                     {
-                        printf("Connect success.\n");
+                        if(DEBUG) printf("[Main process] Connect success.\n");
                         if (send(player_fd, (const char *) &CONNECT, sizeof(CONNECT), 0) == -1)
                         {
                             printf("Error: send failed!\n");
                             return -1;
                         }
-                        printf("    enviou CONNECT %d\n", CONNECT);
+                        if(DEBUG) printf("[Main process] enviou CONNECT %d\n", CONNECT);
                         if (recv(player_fd, &ACK_NACK, sizeof(ACK_NACK), 0) == -1)
                         {
                             printf("Error: recv failed!\n");
@@ -283,7 +294,7 @@ int main(int argc, char ** argv)
                             printf("    Alcançou o outro jogador!.\n");
                         }
                     }
-                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
+                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
                     if (front_end == 0)
                     {
                         return 0;
@@ -331,9 +342,13 @@ int main(int argc, char ** argv)
                         printf("Error: send failed");
                         exit(EXIT_FAILURE);
                     }
-                    printf("[TCP client connected]\n");
+                    if(DEBUG) printf("[Main process] TCP client connected\n");
                 }
             }
+            // else if (!strncmp (server_message, NACK_online, sizeof(NACK_online)))
+            // { 
+
+            // }
         /*  Server Down  */
             else if (!strncmp (server_message, Server_down, sizeof(Server_down)))
             {
@@ -359,7 +374,7 @@ int main(int argc, char ** argv)
                 client_sockfd = -1;
                 while (client_sockfd == -1 && try_c < 59)
                 {
-                    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr); 
+                    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG); 
                     sleep(3);
                     try_c++;
                     printf("...attempt %d/60: ", try_c);
@@ -375,9 +390,9 @@ int main(int argc, char ** argv)
                     /* 
                         Initialize auxiliars processes
                     */
-                    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1]);
-                    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0]);
-                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1]); 
+                    listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1], DEBUG);
+                    sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0], DEBUG);
+                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
                     if (listener == 0 || sender == 0 || front_end == 0)
                     {
                         return 0;

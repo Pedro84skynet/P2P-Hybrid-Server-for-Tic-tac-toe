@@ -48,9 +48,9 @@
 /*    MASTER HANDLER                                                                                 */
 /*                                                                                                   */
 /*****************************************************************************************************/ 
-int master_handler(int player_rd, char * client_message)
+int master_handler(int player_rd, char * client_message, bool DEBUG)
 {
-    printf("master_handler receive: %s\n", client_message);
+    if(DEBUG) printf("[Master handler] receive: %s\n", client_message);
     unsigned char client_message_copy[64];
     unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
     char event[64];
@@ -61,12 +61,12 @@ int master_handler(int player_rd, char * client_message)
 /*  NEW    ___________________________________________________________________*/
     if (!strncmp(command, "new", 3)) 
     {
-        printf("Master: receive NEW\n");
+        if(DEBUG)printf("[Master handler]  receive NEW\n");
         log_event("Received request for new user");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        printf("Master: [user:%s len: %ld]\n", user, strlen(user));
-        printf("Master: [pass:%s len: %ld]\n", pass, strlen(pass));
+        if(DEBUG)printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG)printf("[Master handler] pass:%s len: %ld\n", pass, strlen(pass));
         if(insert_user(user, pass)) 
         {
             printf("Error: new user NOT created.\n");
@@ -76,7 +76,7 @@ int master_handler(int player_rd, char * client_message)
         {
             sprintf(event,"new user %s created.", user);
             log_event(event);
-            printf("Master: new user created.\n");
+            if(DEBUG) printf("[Master handler] new user created.\n");
             write(player_rd, ACK_new_user, sizeof(ACK_new_user));
         }
         return 1; 
@@ -84,15 +84,15 @@ int master_handler(int player_rd, char * client_message)
 /*  PASS    __________________________________________________________________*/
     else if (!strncmp(command, "pass", 4)) 
     {
-        log_event("Received request for new password");
+        log_event("[Master handler] Received request for new password");
         old_pass = strtok(NULL, " ");
         new_pass = strtok(NULL, " ");
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld]\n", user, strlen(user));
+        if(DEBUG)printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
         if (change_pass(user, old_pass, new_pass))
         {
-            printf("Error: new password NOT created.\n");
+            if(DEBUG) printf("Error: new password NOT created.\n");
             log_event("Error: new password NOT created.");
             write(player_rd, NACK_newpass_user, sizeof(NACK_newpass_user));
         }
@@ -100,7 +100,7 @@ int master_handler(int player_rd, char * client_message)
         {
             sprintf(event,"new password for user %s created.", user);
             log_event(event);
-            printf("Master: new password created.\n");
+            if(DEBUG) printf("Master: new password created.\n");
             write(player_rd, ACK_newpass_user, sizeof(ACK_newpass_user));
         }
         return 2;
@@ -108,12 +108,12 @@ int master_handler(int player_rd, char * client_message)
 /*  IN    ____________________________________________________________________*/
     else if (!strncmp(command, "in", 2)) 
     {
-        printf("Master: receive IN\n");
+        if(DEBUG) printf("[Master handler] receive IN\n");
         log_event("log requested.");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        printf("Master: [user:%s len: %ld]\n", user, strlen(user));
-        printf("Master: [pass:%s len: %ld]\n", pass, strlen(pass));
+        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] pass:%s len: %ld\n", pass, strlen(pass));
         if(log_user(user, pass)) {
             printf("Error: username or password did NOT match.\n");
             log_event("log denied: username or password did NOT match.");
@@ -123,7 +123,7 @@ int master_handler(int player_rd, char * client_message)
         {
             sprintf(event,"user %s logged.", user);
             log_event(event);
-            printf("Master: user logged.\n");
+            if(DEBUG) printf("[Master handler] user logged.\n");
             write(player_rd, ACK_in_user, sizeof(ACK_in_user));
         }
         int change_data(char *username, int cod);
@@ -174,6 +174,7 @@ int master_handler(int player_rd, char * client_message)
         {
             sprintf(event,"call received but %s is not online.", user);
             log_event(event);
+            write(player_rd, NACK_online, sizeof(NACK_online));
             return 7;
         }
     }
@@ -216,7 +217,7 @@ int master_handler(int player_rd, char * client_message)
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -236,7 +237,7 @@ int master_handler(int player_rd, char * client_message)
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        printf("[user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -248,12 +249,13 @@ int master_handler(int player_rd, char * client_message)
 }
 
 
-/*****************************************************************************************************/
-/*                                                                                                   */
-/*    CLIENT HANDLER                                                                                 */
-/*                                                                                                   */
-/*****************************************************************************************************/
-int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16_t port, int tcp_fd) 
+/**************************************************************************************/
+/*                                                                                    */
+/*    CLIENT HANDLER                                                                  */
+/*                                                                                    */
+/**************************************************************************************/
+int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, 
+                    uint16_t port, int tcp_fd, bool DEBUG) 
 {
     int udp_fd;
     ssize_t n_bytes;
@@ -326,10 +328,10 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
             }
             port = addr.sin_port;
             write(list_to_send_pipe[1],(void *) &port, sizeof(port));
-            printf("Listener: Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
+            if(DEBUG) printf("[Listener] Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
             client_message[n_bytes + 1] = '\0';
-            printf("Listener recebeu do socket: %s\n", client_message);
-            printf("    n_bytes: %d\n", (int) n_bytes);
+            if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
+            if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
             if (strncmp(client_message, Ping, sizeof(Ping)))
             {
                 write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
@@ -373,11 +375,11 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
                     exit(EXIT_FAILURE);
                 }
                 client_message[n_bytes + 1] = '\0';
-                printf("Listener recebeu do socket: %s\n", client_message);
-                printf("    n_bytes: %d\n", (int) n_bytes);
+                if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
+                if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(client_message, Ping, sizeof(Ping)))
                 {   
-                    printf("Listener recebeu do socket: %s\n", client_message);
+                    if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
                     write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
                 } 
             }
@@ -405,7 +407,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
         {
             read(list_to_send_pipe[0], (void *) &port, sizeof(port));
             addr.sin_port = port;
-            printf("Sender: Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
+            if(DEBUG) printf("[Sender] Porta do cliente UDP: %d\n", ntohs(addr.sin_port));
         }
         n_bytes = 1;
         while (n_bytes)
@@ -445,7 +447,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
                 (sender_poll_fd[0].fd == sender_pipe[0]))
             {
                 read(sender_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
-                printf("Sender recebeu do pipe: %s\n", server_message);
+                if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", server_message);
                 if (is_udp)
                 {
                     n_bytes = sendto(udp_fd, (void *) server_message, strlen(server_message), 0,
@@ -460,8 +462,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
                     printf("Erro: sender from client_handler failed\n");
                     exit(EXIT_FAILURE);
                 }
-                printf("   .... Sender enviou mensagem para Cliente\n");
-                printf("    n_bytes: %d\n", (int) n_bytes);
+                if(DEBUG) printf("[Sender]   .... Sender enviou mensagem para Cliente\n");
+                if(DEBUG) printf("[Sender]    n_bytes: %d\n", (int) n_bytes);
                 memset((void *)server_message, 0, sizeof(server_message));
             }
         }
@@ -496,8 +498,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
             else if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == listener_pipe[0]))
             {
                 read(listener_pipe[0], (void *) client_message, (size_t) sizeof(client_message));
-                printf("client_handler: Processador recebeu do listener: %s\n", client_message);
-                
+                if(DEBUG) printf("[client_handler Main] Processador recebeu do listener: %s\n", client_message);
                 strncpy(client_message_copy, client_message, strlen(client_message));
                 client_message_copy[strlen(client_message)] = '\0';
                 command = strtok(client_message_copy, " ");
@@ -513,11 +514,11 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
                     else 
                     {
                         user = strtok(NULL, " ");
-                        printf("Processor: [user:%s len: %ld]\n", user, strlen(user));
+                        if(DEBUG) printf("[client_handler Main] user:%s len: %ld\n", user, strlen(user));
                         memset(username, 0, 64); 
                         strncpy(username, user, strlen(user));
                         username[strlen(username)] = '\0';
-                        printf("[username: %s len %ld]\n", username, strlen(username));
+                        if(DEBUG) printf("[client_handler Main] username: %s len %ld\n", username, strlen(username));
                         write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
                     }
                 }
@@ -533,7 +534,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
                     {
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
-                        printf("[client_message_processed: %s len: %ld]\n", 
+                        if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %ld\n", 
                                     client_message_processed, 
                                     strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, 
@@ -594,7 +595,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {
                 read(pipe_read, (void *) server_message, (size_t) sizeof(server_message));
-                printf("Client handler: Processador recebeu do main: %s\n", server_message);
+                if(DEBUG) printf("[client_handler Main] Processador recebeu do main: %s\n", server_message);
             /*  logged  */
                 if (!strncmp(server_message, ACK_in_user, sizeof(ACK_in_user)))
                 {
@@ -607,17 +608,17 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, uint16
             /*  CALL  */
                 if (!strncmp(server_message, "call", 4))
                 {
-                    printf("Client handler: Anexando ip %s\n", ip);
+                    if(DEBUG) printf("[client_handler Main] Anexando ip %s\n", ip);
                     memset(server_message_processed, 0, sizeof(server_message_processed));
                     sprintf(server_message_processed, "%s %s", server_message, ip); 
                     server_message_processed[strlen(server_message_processed)] = '\0';
                     write(sender_pipe[1], (void *) server_message_processed, strlen(server_message_processed));
-                    printf("[server_message_processed: %s len: %ld]\n", server_message_processed, strlen(server_message_processed));
+                    if(DEBUG) printf("[client_handler Main] server_message_processed: %s len: %ld\n", server_message_processed, strlen(server_message_processed));
                 }
                 else
                 {
                     write(sender_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
-                    printf("Client handler: ...enviando mensagem pro sender_pipe[1]\n");
+                    if(DEBUG) printf("[client_handler Main] ...enviando mensagem pro sender_pipe[1]\n");
                     memset(server_message, 0, sizeof(server_message));
                 }
             }

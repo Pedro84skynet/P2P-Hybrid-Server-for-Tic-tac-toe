@@ -39,6 +39,8 @@
 #include "DB_Manag_Sys.h"
 #include "Protocol.h"
 
+static bool DEBUG = false;
+
 /*
     TCP CLiente:  socket[] -> connect[] -> receive[]
     UDP Cliente:  socket[]              -> sendto[]
@@ -54,7 +56,16 @@ int main(int argc, char ** argv)
 {
     uint16_t port = (uint16_t)atoi(argv[1]);
     uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
-    printf("Aux port: %d\n", aux_udp_port);
+
+    for (int i = 0; i < argc; i++)
+    {
+        if (!strncmp(argv[i], "-d", 2) || !strncmp(argv[i], "-D", 2))
+        {
+            DEBUG = true;
+        }
+    }
+    
+    if(DEBUG) printf("[Main Process] Aux port: %d\n", aux_udp_port);
 
     int player1_wr[2];
     int player1_rd[2];
@@ -159,7 +170,7 @@ int main(int argc, char ** argv)
             }
             if ((fd[0].revents == POLLIN) && fd[0].fd == udp_fd) 
             { 
-                printf("Server Poll: ...socket UDP chamando\n");
+                if(DEBUG)printf("[Main Aux] Server Poll: ...socket UDP chamando\n");
                 len = sizeof(serv_addr);
                 if(recvfrom(udp_fd, (void *) &CONNECT, sizeof(CONNECT), 0, 
                                     (struct sockaddr *) &serv_addr, (socklen_t *) &len) == -1) 
@@ -171,7 +182,7 @@ int main(int argc, char ** argv)
                 memset((void *) player_ip, 0, sizeof(player_ip));
                 strncpy(player_ip, inet_ntoa(serv_addr.sin_addr), ip_len + 1);
                 player_ip[ip_len + 1] = '\0';
-                printf("    IP address is: %s\n", player_ip);
+                if(DEBUG) printf("[Main Aux]    IP address is: %s\n", player_ip);
                 if (CONNECT)
                 {
                     ACK_NACK = 1;
@@ -206,8 +217,8 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     close(listen_fd);
                     
-                    if(n_clients)client_handler(player_ip, true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0);
-                    else client_handler(player_ip, true, player1_rd[0], player1_wr[1], aux_udp_port, 0);
+                    if(n_clients)client_handler(player_ip, true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0, DEBUG);
+                    else client_handler(player_ip, true, player1_rd[0], player1_wr[1], aux_udp_port, 0, DEBUG);
 
                     return 0;
                 }
@@ -215,7 +226,7 @@ int main(int argc, char ** argv)
             }
             if ((fd[1].revents == POLLIN) && (fd[1].fd == listen_fd)) 
             {
-                printf("Server Poll: ...socket TCP chamando\n");
+                if(DEBUG)printf("[Main Aux] Server Poll: ...socket TCP chamando\n");
                 len = sizeof(serv_addr);
                 if ((tcp_fd = accept(listen_fd, (struct sockaddr*)&serv_addr, (socklen_t *) &len)) == -1)
                 {
@@ -231,7 +242,7 @@ int main(int argc, char ** argv)
                 memset((void *) player_ip, 0, sizeof(player_ip));
                 strncpy(player_ip, inet_ntoa(serv_addr.sin_addr), ip_len + 1);
                 player_ip[ip_len + 1] = '\0';
-                printf("    IP address is: %s\n", player_ip);
+                if(DEBUG)printf("[Main Aux]    IP address is: %s\n", player_ip);
                 if (CONNECT)
                 {
                     ACK_NACK = 1;
@@ -251,8 +262,8 @@ int main(int argc, char ** argv)
                 {
                     close(listen_fd);
                     close(udp_fd);
-                    if(n_clients) client_handler(player_ip, false, player2_rd[0], player2_wr[1], 0, tcp_fd);
-                    else client_handler(player_ip, false, player1_rd[0], player1_wr[1], 0, tcp_fd);
+                    if(n_clients) client_handler(player_ip, false, player2_rd[0], player2_wr[1], 0, tcp_fd, DEBUG);
+                    else client_handler(player_ip, false, player1_rd[0], player1_wr[1], 0, tcp_fd, DEBUG);
 
                     return 0;
                 }
@@ -260,7 +271,7 @@ int main(int argc, char ** argv)
                 n_clients++;    
             }
         }
-        printf("Master aux: %d players ...bye!\n", n_clients);
+        if(DEBUG)printf("[Main Aux] %d players ...bye!\n", n_clients);
         return 0;
     }
 
@@ -277,7 +288,7 @@ int main(int argc, char ** argv)
 
         ret = poll(fd, 2, 0);
         if (ret == -1) {
-            perror ("poll");
+            printf("Error: poll failed!\n");
             return 1;
         }
          
@@ -285,40 +296,40 @@ int main(int argc, char ** argv)
         {
             /* Atualiza banco de dados com requisições do 
             processo do servidor referente a player 1*/
-            printf("Master poll: pipe do Player1!\n");
+            if(DEBUG) printf("[Main Process] poll: pipe do Player1!\n");
             read(player1_wr[0], client_message, sizeof(client_message));
-            printf("Master read from player1_wr[0]: %s\n", client_message);
-            mh_return = master_handler(player1_rd[1], client_message);
+            if(DEBUG) printf("[Main Process] read from player1_wr[0]: %s\n", client_message);
+            mh_return = master_handler(player1_rd[1], client_message, DEBUG);
         /*  CALL    __________________________________________________________________*/
-            if (mh_return == 6) // call to other player.
+            if (mh_return == 6) // call to other player. 
             {
-                printf("mh_return == 6\n");
+                if(DEBUG) printf("[Main Process] mh_return == 6\n");
                 write(player2_rd[1], client_message, sizeof(client_message));
             }
             if (mh_return == 8) // call to other player.
             {
-                printf("mh_return == 8\n");
+                if(DEBUG) printf("[Main Process] mh_return == 8\n");
                 write(player2_rd[1], ACK_accept, sizeof(ACK_accept));
             }
             memset(client_message, 0, (size_t) sizeof(client_message));
         }
         else if ((fd[1].revents == POLLIN) && fd[1].fd == player2_wr[0])
         {
-            printf("Master poll: pipe do Player2!\n");
+            if(DEBUG) printf("[Main Process] poll: pipe do Player2!\n");
             /* Atualiza banco de dados com requisições do 
                processo do servidor referente a player 2*/
             read(player2_wr[0], client_message, sizeof(client_message));
-            printf("Master read from player2_wr[0]: %s\n", client_message);
-            mh_return = master_handler(player2_rd[1], client_message);
+            if(DEBUG) printf("[Main Process] read from player2_wr[0]: %s\n", client_message);
+            mh_return = master_handler(player2_rd[1], client_message, DEBUG);
         /*  CALL    __________________________________________________________________*/
             if (mh_return == 6) // call to other player.
             {
-                printf("mh_return == 6\n");
+                if(DEBUG) printf("[Main Process] mh_return == 6\n");
                 write(player1_rd[1], client_message, sizeof(client_message));
             }
             if (mh_return == 8) // call to other player.
             {
-                printf("mh_return == 8\n");
+                if(DEBUG) printf("[Main Process] mh_return == 8\n");
                 write(player1_rd[1], ACK_accept, sizeof(ACK_accept));
             }
             memset(client_message, 0, sizeof(client_message));

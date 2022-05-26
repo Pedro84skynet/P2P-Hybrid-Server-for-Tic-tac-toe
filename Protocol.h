@@ -31,7 +31,7 @@
 #define NACK_newpass_user    "...error: new password not created"
 #define ACK_out_user         "...logged out!"
 #define NACK_out_user        "...error: still logged"
-#define ACK_bye_user          "...bye!"
+#define ACK_bye_user         "...bye!"
 #define NACK_already_logged  "...Already Logged!"
 #define NACK_not_logged      "...you need to be logged!"
 #define ACK_hallofame        "********************"
@@ -43,5 +43,7 @@
 #define Server_down          "...lost connection with server."
 #define ACK_accept           "...accepted!"
 #define NACK_accept          "...not accepted!"
+#define NACK_online          "...this player is not online!"
 
 #endif
+

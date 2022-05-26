@@ -37,9 +37,11 @@
 #include "Hash_Game.h"
 #include "Protocol.h"
 
+
+
 pid_t listener_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
-                        int listener_pipe) 
+                        int listener_pipe, bool DEBUG) 
 {
     pid_t listener;
     int n_bytes, len, ret; 
@@ -70,7 +72,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
             }
             if(ret == 0) //Server_down
             {
-                printf("\nListener não recebeu nenhama conexão do servidor\n");
+                if(DEBUG) printf("\n[Listener] Listener não recebeu nenhuma conexão do servidor\n");
                 close(client_sockfd);
                 write(listener_pipe, (void *) Server_down, (size_t) sizeof(Server_down));
                 sleep(10);
@@ -106,8 +108,8 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                     }
                 }
                 server_message[n_bytes] = '\0';
-                printf("Listener recebeu do socket: %s\n", server_message);
-                printf("    n_bytes: %d\n", (int) n_bytes);
+                if(DEBUG) printf("[Listener] Listener recebeu do socket: %s\n", server_message);
+                if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(server_message, Ping, sizeof(Ping)))
                 {
                     write(listener_pipe, (void *) server_message, (size_t) sizeof(server_message));   
@@ -122,7 +124,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
 
 pid_t sender_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
-                        int sender_pipe) 
+                        int sender_pipe, bool DEBUG) 
 {
     pid_t sender;
     int n_bytes, len, ret; 
@@ -159,7 +161,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                     if (n_bytes == -1)
                     {
                         printf("Error: sendto failed\n");
-                        exit(EXIT_FAILURE);
+                        exit(EXIT_FAILURE); 
                     }
                 } 
                 else 
@@ -177,7 +179,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
             {
                 memset((void *)client_message, 0, sizeof(client_message));
                 read(sender_pipe, (void *) client_message, (size_t) sizeof(client_message));
-                printf("Sender recebeu do pipe: %s\n", client_message);
+                if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", client_message);
 
                 if (is_udp)
                 {
@@ -198,8 +200,8 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                         exit(EXIT_FAILURE);
                     }
                 }
-                printf("   .... Sender enviou mensagem para Servidor\n");
-                printf("    n_bytes: %d\n", (int) n_bytes);
+                if(DEBUG) printf("[Sender]   .... Sender enviou mensagem para Servidor\n");
+                if(DEBUG) printf("[Sender]    n_bytes: %d\n", (int) n_bytes);
             }
         }
         exit(EXIT_SUCCESS);
@@ -207,7 +209,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
     return sender;
 }
 
-pid_t front_end_process(int back_end_pipe, int front_end_pipe) 
+pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG) 
 {
     pid_t  front_end;
     int n_bytes, len, ret; 
@@ -223,7 +225,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
     }
     if (front_end == 0) 
     {
-        printf("[front_end created]\n");
+        if(DEBUG) printf("[Front-end] front_end created\n");
         bool invalid_command = true;
         bool need_loop = false;
         while (1)
@@ -232,7 +234,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
                 printf("JogoDaVelha> ");
                 fgets(user_input, 64, stdin);
                 user_input[strlen(user_input) - 1] = '\0'; 
-                printf("Front-end Input: %s\n", user_input);
+                if(DEBUG) printf("[Front-end] Input: %s\n", user_input);
                 strncpy(user_input_copy, user_input, strlen(user_input));
                 user_input_copy[strlen(user_input)] = '\0';
                 command = strtok(user_input_copy, " ");
@@ -273,7 +275,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
                     invalid_command = false;
                     player2 = strtok(NULL, " ");
                     strncpy(other_player_name, player2, strlen(player2));
-                    printf ("front-end: other_player_name: %s\n", other_player_name);
+                    if(DEBUG) printf ("[Front-end] other_player_name: %s\n", other_player_name);
                 } 
             /*  PLAY    __________________________________________________________________*/
                 else if (!strncmp(command, "play", 4)) 
@@ -324,14 +326,25 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
                        strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
                 {
                     read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
-                    printf("    %s\n", server_message);
+                    if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
+                    {
+                        printf("\n%s\n", server_message); //End of hall of fame
+                    }
+                    else if (!strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
+                    {
+                        printf("                        %s\n", server_message); //End of list
+                    }
+                    else
+                    {
+                        printf("    %s\n", server_message); //Normal Case
+                    } 
                 } 
                 need_loop = false;
             }
             else
             {
                 read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
-                printf("Front-end Output: %s\n", server_message);
+                printf("    %s\n", server_message);
             }
             memset((void *) user_input, 0, sizeof(user_input));
             memset((void *) server_message, 0, sizeof(server_message));
@@ -343,7 +356,8 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe)
     return front_end;
 }
 
-int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_addr)
+int Connect_Procedure(bool is_udp, int client_sockfd, 
+                        struct sockaddr_in * serv_addr, bool DEBUG)
 {
     socklen_t len;
     ssize_t n_bytes;
@@ -368,7 +382,7 @@ int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_
             printf("Error: sendto failed!\n");
             return -1;
         }
-        printf("    enviou CONNECT %d\n", CONNECT);
+        if(DEBUG) printf("[Connect Procedure]    enviou CONNECT %d\n", CONNECT);
         len = sizeof(struct sockaddr_in);
         if (recvfrom(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0, 
                         (struct sockaddr *) serv_addr, &len) == -1)
@@ -393,7 +407,7 @@ int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_
         if (CHANGE_PORT != 0)
         {
             close(client_sockfd);
-            printf("Changing to aux port: %d\n", ntohs(CHANGE_PORT));
+            if(DEBUG) printf("[Connect Procedure] Changing to aux port: %d\n", ntohs(CHANGE_PORT));
             bzero(serv_addr, sizeof(struct sockaddr_in));
             (*serv_addr).sin_family = AF_INET;
             (*serv_addr).sin_port = CHANGE_PORT;
@@ -420,13 +434,13 @@ int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_
             printf("Error: connect failed\n");
             return -1;
         }
-        printf("Connect success.\n");
+        printf("Conexão estabelecida.\n");
         if (send(client_sockfd, (const char *) &CONNECT, sizeof(CONNECT), 0) == -1)
         {
             printf("Error: send failed!\n");
             return -1;
         }
-        printf("    enviou CONNECT %d\n", CONNECT);
+        if(DEBUG) printf("[Connect Procedure] enviou CONNECT %d\n", CONNECT);
         if (recv(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0) == -1)
         {
             printf("Error: recv failed!\n");

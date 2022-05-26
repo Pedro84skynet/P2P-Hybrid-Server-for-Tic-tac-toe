@@ -34,17 +34,18 @@
 /*    LISTENER PROCESS                                                         */
 pid_t listener_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
-                        int listener_pipe);
+                        int listener_pipe, bool DEBUG);
 
 /*    SENDER PROCESS                                                           */
 pid_t sender_process(int client_sockfd, bool is_udp,
                         struct sockaddr_in * serv_addr,
-                        int sender_pipe);
+                        int sender_pipe, bool DEBUG);
 
 /*    FRONT END PROCESS                                                        */
-pid_t front_end_process(int back_end_pipe, int front_end_pipe);
+pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG);
 
 /*    CONNECT PROCEDURE                                                        */
-int Connect_Procedure(bool is_udp, int client_sockfd, struct sockaddr_in * serv_addr);
+int Connect_Procedure(bool is_udp, int client_sockfd, 
+                        struct sockaddr_in * serv_addr, bool DEBUG);
 
 #endif
