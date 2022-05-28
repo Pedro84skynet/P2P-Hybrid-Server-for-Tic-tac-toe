@@ -84,7 +84,7 @@ NUSP: 5948611
         Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t udp -i "192.168.15.138"
         Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t tcp -i "192.168.15.138"
 
-  2.3.1 Para rodar o binário de um cliente digitar em modo debug:
+  2.3.1 Para rodar o binário de um cliente em modo debug digitar:
         "./EP2_Client -p (número da porta) -t (tipo de protocolo) -i 
                                     (Endereço ip da máquina do servidor) -d"
 
@@ -97,12 +97,12 @@ NUSP: 5948611
   2.4   Comandos de cliente são os mesmos pedidos no enunciado deste EP:
 
         • new <usuario> <senha>: cria um novo usuário.
-                Não usar nomes e senhas grandes (> 16 caractéres).
-                Não nomes ou senhas com espaço 
+                Não usar nomes e senhas grandes (> 16 carácteres).
+                Não usar nomes ou senhas com espaço 
                     e.g: Pvt. Hudson (Preferir: Pvt_Hudson).
                 
         • pass <senha antiga> <senha nova>: muda a senha do usuário
-                Não senhas grandes (> 16 caractéres).
+                Não usar senhas grandes (> 16 carácteres).
                 
         • in <usuario> <senha>: usuário entra no servidor.
 
@@ -118,7 +118,7 @@ NUSP: 5948611
             O outro oponente receberá, sem precisar digitar nada,
             a seguinte mensagem:
 
-            JogoDaVelha> Invitation for game received from Ripley!
+            JogoDaVelha> Invitation for game received from (nome_oponente)!
                 ...accept? (y/n):
 
             Então deve escolher (y-sim || n-não). e.g.:
@@ -141,9 +141,13 @@ NUSP: 5948611
           do sistema operacional
             Não é preciso deslogar no caso do bye sem out anterior.
 
-        OBS.2: todos comandos acima devem ter os seus respectivos espaçamentos 
+        OBS.2:  Todos comandos acima devem ter os seus respectivos espaçamentos 
                 respeitados. e.g.: (new" "Ripley" "2092):
                 input aceitável: JogoDaVelha> new Ripley 2092
+
+        OBS.3:  Nenhum comando neste programa nescessita de espaçamento inicial.
+                e.g: 
+            JogoDaVelha>(Espaço do prompt,não de digitação do usuário)in Ripley 2092
 
   2.5   Para finalizar o servidor pressionar "Ctrl+C" no terminal.
 
