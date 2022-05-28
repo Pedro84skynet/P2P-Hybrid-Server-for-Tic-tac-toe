@@ -299,7 +299,7 @@ int main(int argc, char ** argv)
                 } 
                 if (is_player1)
                 {
-                    if (game_end || tie < 0)
+                    if (game_end || tie <= 0)
                     {
                         if (game_end == 'X') 
                         {
@@ -311,11 +311,11 @@ int main(int argc, char ** argv)
                             write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
                         }
                         // if (game_end == 'O') printf("\n\nVocê Perdeu!\n\n");
-                        if (!game_end && tie < 0) 
+                        if (!game_end && tie <= 0) 
                         {
                             // printf("\n\nEmpate!\n\n");
                             memset((void *) processed_message, 0, sizeof(processed_message));
-                            sprintf(processed_message, "%s %s %s",Draw, username, othername);
+                            sprintf(processed_message, "%s %s %s", Draw, username, othername);
                             if(DEBUG) printf("[Main process] draw processed_message: %s!\n", processed_message);
                             processed_message[strlen(processed_message)] = '\0';
                             write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
@@ -334,7 +334,7 @@ int main(int argc, char ** argv)
                 }
                 else
                 {
-                    if (game_end || tie < 1)
+                    if (game_end || tie <= 1)
                     {
                         if (game_end == 'O') 
                         {
@@ -373,16 +373,6 @@ int main(int argc, char ** argv)
                 strncpy(username, user_name, strlen(user_name));
                 username[strlen(user_name)] = '\0';
                 if(DEBUG) printf("[Main process] username: %s\n", username);
-                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
-                usleep(50000);
-            }
-        /*  CALL  */
-            else if (!strncmp (client_message, "call", 4))
-            {
-                strncpy(processed_message, client_message, sizeof(client_message));
-                command = strtok(processed_message, " ");
-                other_name  = strtok(NULL, " ");
-                strncpy(othername, other_name, strlen(other_name));
                 write(sender_pipe[1], (void *) client_message, sizeof(client_message));
                 usleep(50000);
             }

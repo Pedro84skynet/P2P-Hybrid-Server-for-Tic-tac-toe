@@ -67,8 +67,8 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
         log_event("Received request for new user");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        if(DEBUG)printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
-        if(DEBUG)printf("[Master handler] pass:%s len: %ld\n", pass, strlen(pass));
+        if(DEBUG)printf("[Master handler] user:%s len: %zu\n", user, strlen(user));
+        if(DEBUG)printf("[Master handler] pass:%s len: %zu\n", pass, strlen(pass));
         if(insert_user(user, pass)) 
         {
             printf("Error: new user NOT created.\n");
@@ -91,7 +91,7 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
         new_pass = strtok(NULL, " ");
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        if(DEBUG)printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG)printf("[Master handler] user:%s len: %zu\n", user, strlen(user));
         if (change_pass(user, old_pass, new_pass))
         {
             if(DEBUG) printf("Error: new password NOT created.\n");
@@ -114,21 +114,28 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
         log_event("log requested.");
         user = strtok(NULL, " ");
         pass = strtok(NULL, " ");
-        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
-        if(DEBUG) printf("[Master handler] pass:%s len: %ld\n", pass, strlen(pass));
-        if(log_user(user, pass)) {
-            printf("Error: username or password did NOT match.\n");
-            log_event("log denied: username or password did NOT match.");
-            write(player_rd, NACK_in_user, sizeof(NACK_in_user));
-        }
-        else 
+        if(DEBUG) printf("[Master handler] user:%s len: %zu\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] pass:%s len: %zu\n", pass, strlen(pass));
+        if (!is_online(user))
         {
-            sprintf(event,"user %s logged.", user);
-            log_event(event);
-            if(DEBUG) printf("[Master handler] user logged.\n");
-            write(player_rd, ACK_in_user, sizeof(ACK_in_user));
+            if(log_user(user, pass)) 
+            {
+                printf("Error: username or password did NOT match.\n");
+                log_event("log denied: username or password did NOT match.");
+                write(player_rd, NACK_in_user, sizeof(NACK_in_user));
+            }
+            else 
+            {
+                sprintf(event,"user %s logged.", user);
+                log_event(event);
+                if(DEBUG) printf("[Master handler] user logged.\n");
+                write(player_rd, ACK_in_user, sizeof(ACK_in_user));
+            }
+        } 
+        else
+        {
+            write(player_rd, NACK_already_logged, sizeof(NACK_already_logged));
         }
-        int change_data(char *username, int cod);
         return 3; 
     }
 /*  HALLOFFAME    ____________________________________________________________*/
@@ -218,7 +225,7 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] user:%s len: %zu\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -238,7 +245,7 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
     {
         user = strtok(NULL, " ");
         user[strlen(user)] = '\0';
-        if(DEBUG) printf("[Master handler] user:%s len: %ld\n", user, strlen(user));
+        if(DEBUG) printf("[Master handler] user:%s len: %zu\n", user, strlen(user));
         if(change_data(user, 2))
         {
             sprintf(event,"Error: Database failed to logged out user %s.", user);
@@ -295,6 +302,7 @@ int master_handler(int player_rd, char * client_message, bool DEBUG)
             sprintf(event,"Error: Database failed quit game user %s.", token);
             log_event(event);
         }
+        write(player_rd, Draw, sizeof(Draw));
         return 13;
     }
 }
@@ -565,11 +573,11 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     else 
                     {
                         user = strtok(NULL, " ");
-                        if(DEBUG) printf("[client_handler Main] user:%s len: %ld\n", user, strlen(user));
+                        if(DEBUG) printf("[client_handler Main] user:%s len: %zu\n", user, strlen(user));
                         memset(username, 0, 64); 
                         strncpy(username, user, strlen(user));
                         username[strlen(username)] = '\0';
-                        if(DEBUG) printf("[client_handler Main] username: %s len %ld\n", username, strlen(username));
+                        if(DEBUG) printf("[client_handler Main] username: %s len %zu\n", username, strlen(username));
                         write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
                     }
                 }
@@ -585,7 +593,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     {
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
-                        if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %ld\n", 
+                        if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %zu\n", 
                                     client_message_processed, 
                                     strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, 
@@ -664,7 +672,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     sprintf(server_message_processed, "%s %s", server_message, ip); 
                     server_message_processed[strlen(server_message_processed)] = '\0';
                     write(sender_pipe[1], (void *) server_message_processed, strlen(server_message_processed));
-                    if(DEBUG) printf("[client_handler Main] server_message_processed: %s len: %ld\n", server_message_processed, strlen(server_message_processed));
+                    if(DEBUG) printf("[client_handler Main] server_message_processed: %s len: %zu\n", server_message_processed, strlen(server_message_processed));
                 }
                 else
                 {

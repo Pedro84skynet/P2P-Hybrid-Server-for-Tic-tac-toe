@@ -35,7 +35,7 @@ void log_event(char *event)
     struct tm t = *localtime(&s);
 
     log = fopen("log.txt", "a");
-    fprintf(log, "[%d//%02d//%02d - %02d:%02d:%02d]: %s\n",
+    fprintf(log, "[%d/%02d/%02d - %02d:%02d:%02d]: %s\n",
                 t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, 
                 t.tm_hour, t.tm_min, t.tm_sec, event);
     fclose(log);
@@ -74,7 +74,7 @@ int log_user(char * username, char * password)
             check = false;      
         }
         token = strtok(NULL, " ");
-        if (strncmp(token, password, strlen(token)))
+        if (strncmp(token, password, strlen(token) + 1))
         {
             check = false;                 
         }
@@ -271,7 +271,7 @@ int halloffame_sender(int pipe)
         sprintf(line, "%s %s", user, score);
         write(pipe, (void *) line, sizeof(line));
         memset((void *)line, 0, 64);
-        usleep(20000);
+        usleep(25000);
     }
     fclose(fp);
     return 0;
@@ -306,7 +306,7 @@ int l_sender(int pipe)
                 sprintf(line, "%s | não", user);
             }   
             write(pipe, (void *) line, sizeof(line));
-            usleep(20000);
+            usleep(25000);
         }
         memset((void *)line, 0, 64);
     }

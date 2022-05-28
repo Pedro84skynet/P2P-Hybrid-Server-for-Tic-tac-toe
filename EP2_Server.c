@@ -92,6 +92,7 @@ int main(int argc, char ** argv)
 
     int ip_len;
     char player_ip[16];
+    char event[64];
 
     CONNECT = 0;
 
@@ -124,7 +125,6 @@ int main(int argc, char ** argv)
         printf("Error:udp_fd bind failed");
         exit(EXIT_FAILURE);
     }
-
     if ((listen(listen_fd, 10)) == -1)
     {
         printf("Error: listen failed");
@@ -192,6 +192,8 @@ int main(int argc, char ** argv)
                         printf("Error: sendto failed");
                         exit(EXIT_FAILURE);
                     }
+                    sprintf(event, "[UDP client connected] ip: %s\n", player_ip);
+                    log_event(event);
                     printf("[UDP client connected]\n");
                 }
                 else 
@@ -251,6 +253,8 @@ int main(int argc, char ** argv)
                         printf("Error: send failed");
                         exit(EXIT_FAILURE);
                     }
+                    sprintf(event, "[TCP client connected] ip: %s\n", player_ip);
+                    log_event(event);
                     printf("[TCP client connected]\n");
                 }
                 if ((player_id = fork()) == -1)

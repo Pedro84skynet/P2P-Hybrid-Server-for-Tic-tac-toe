@@ -235,6 +235,10 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
             while(invalid_command) {
                 printf("JogoDaVelha> ");
                 fgets(user_input, 64, stdin);
+                if (!strncmp(user_input, "\n", 2))
+                {
+                    continue;
+                }
                 user_input[strlen(user_input) - 1] = '\0'; 
                 if(DEBUG) printf("[Front-end] Input: %s\n", user_input);
                 strncpy(user_input_copy, user_input, strlen(user_input));
@@ -242,29 +246,29 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                 command = strtok(user_input_copy, " ");
                 client_message[strlen(client_message) - 1] = '\0';
             /*  NEW    ___________________________________________________________________*/
-                if (!strncmp(command, "new", 3)) 
+                if (!strncmp(command, "new", 4)) 
                 {
                     invalid_command = false;
                 }
             /*  PASS    __________________________________________________________________*/
-                else if (!strncmp(command, "pass", 4)) 
+                else if (!strncmp(command, "pass", 5)) 
                 { 
                     invalid_command = false;
                 }
             /*  IN    ____________________________________________________________________*/
-                else if (!strncmp(command, "in", 2)) 
+                else if (!strncmp(command, "in", 3)) 
                 { 
                     invalid_command = false;
                 }
             /*  HALLOFFAME    ____________________________________________________________*/
-                else if (!strncmp(command, "halloffame", 10)) 
+                else if (!strncmp(command, "halloffame", 11)) 
                 {
                     printf("\n*** Hall of Fame ***\n\n");
                     invalid_command = false;
                     need_loop = true; 
                 }
             /*  L    _____________________________________________________________________*/
-                else if (!strncmp(command, "l", 1)) 
+                else if (!strncmp(command, "l", 2)) 
                 {
                     printf("\nUsuários Online:\n");
                     printf("(usuário) | (jogando)\n");
@@ -272,7 +276,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     need_loop = true; 
                 }
             /*  CALL    __________________________________________________________________*/ 
-                else if (!strncmp(command, "call", 4)) 
+                else if (!strncmp(command, "call", 5)) 
                 { 
                     invalid_command = false;
                     player2 = strtok(NULL, " ");
@@ -281,27 +285,27 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     if(DEBUG) printf ("[Front-end] other_player_name: %s\n", other_player_name);
                 } 
             /*  PLAY    __________________________________________________________________*/
-                else if (!strncmp(command, "play", 4)) 
+                else if (!strncmp(command, "play", 5)) 
                 { 
                     invalid_command = false;
                 }
             /*  DELAY    _________________________________________________________________*/ 
-                else if (!strncmp(command, "delay", 5)) 
+                else if (!strncmp(command, "delay", 6)) 
                 { 
                     invalid_command = false;
                 }
             /*  OVER    __________________________________________________________________*/ 
-                else if (!strncmp(command, "over", 4)) 
+                else if (!strncmp(command, "over", 5)) 
                 { 
                     invalid_command = false;
                 }
             /*  OUT    ___________________________________________________________________*/
-                else if (!strncmp(command, "out", 3)) 
+                else if (!strncmp(command, "out", 4)) 
                 { 
                     invalid_command = false;
                 }
             /*  BYE    ___________________________________________________________________*/
-                else if (!strncmp(command, "bye", 3)) 
+                else if (!strncmp(command, "bye", 4)) 
                 { 
                     invalid_command = false;
                     write(front_end_pipe, (void *) user_input, (size_t) strlen(user_input));
@@ -318,15 +322,9 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
             write(front_end_pipe, (void *) user_input, (size_t) strlen(user_input));
             if (need_loop)
             {
-                // read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
-                // printf("    %s\n", server_message);
-                // if (!strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged))) 
-                // {
-                //     need_loop = false;
-                //     continue;
-                // }
                 while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
-                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
+                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l))  &&
+                       strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged)))
                 {
                     read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
                     if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
