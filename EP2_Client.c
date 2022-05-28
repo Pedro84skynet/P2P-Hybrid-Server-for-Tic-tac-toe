@@ -52,31 +52,68 @@ static bool DEBUG = false;
 /*****************************************************************************************************/
 int main(int argc, char ** argv) 
 {
+    socklen_t len;
+    ssize_t n_bytes;
+    int client_sockfd, listen_fd, player_fd;
+    uint16_t port, p2p_port;
+    bool is_udp;
+    char ip_addr[16];
 
-    // Error Message 
-    if (argc < 2) {
-        printf("usage: ./EP2_Client port_number protocol\n");
+    /*
+        Process input terminal initial arguments.
+    */ 
+    if (argc < 7) {
+        printf("usage: ./EP2_Client -p port_number -t protocol -i ip_address\n");
         printf("examples with port = 8000:\n");
         printf("    Protocol TCP:         ./EP2_Client 8000 TCP\n");
         printf("    Protocol UDP:         ./EP2_Client 8000 UDP\n");
         exit(0);
     }
-
     for (int i = 0; i < argc; i++)
     {
         if (!strncmp(argv[i], "-d", 2) || !strncmp(argv[i], "-D", 2))
         {
             DEBUG = true;
         }
+        else if (!strncmp(argv[i], "-p", 2) || !strncmp(argv[i], "-P", 2))
+        {
+            port = atoi(argv[i + 1]);
+            p2p_port = port +1;
+            i++;
+        }
+        else if (!strncmp(argv[i], "-t", 2) || !strncmp(argv[i], "-T", 2))
+        {
+            /* Checks the protocol and if client connected to server */
+            if (!strncmp("UDP", argv[i + 1], 3) || 
+                !strncmp("udp", argv[i + 1], 3) || 
+                !strncmp("Udp", argv[i + 1], 3)) 
+            {
+                is_udp = true;
+            }
+            else if (!strncmp("TCP", argv[i + 1], 3) || 
+                    !strncmp("tcp", argv[i + 1], 3) || 
+                    !strncmp("Tcp", argv[i + 1], 3)) 
+            {
+                is_udp = false;
+            }
+            else
+            {
+                printf("Protocolo não utilizado.\n");
+                exit(EXIT_FAILURE);
+            }
+            i++; 
+        }
+        else if (!strncmp(argv[i], "-i", 2) || 
+                 !strncmp(argv[i], "-I", 2) ||
+                 !strncmp(argv[i], "-ip", 3))
+        {
+            strncpy(ip_addr,argv[i + 1], strlen(argv[i + 1]));
+            ip_addr[strlen(argv[i + 1])] = '\0';
+            i++;
+        }
     }
 
-    socklen_t len;
-    ssize_t n_bytes;
-    int client_sockfd, listen_fd, player_fd;
-    uint16_t port, p2p_port;
-
-    port = atoi(argv[1]);
-    p2p_port = (uint16_t) atoi(argv[1]) +1;
+    
 
     /*
         Basic Protocolos. 
@@ -90,9 +127,8 @@ int main(int argc, char ** argv)
     struct sockaddr_in serv_addr;
     memset((void *)&serv_addr, 0,  sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    //serv_addr.sin_addr.s_addr = inet_addr("192.168.15.138");
-    serv_addr.sin_addr.s_addr = inet_addr("192.168.15.15");
+    serv_addr.sin_port = htons(port); 
+    serv_addr.sin_addr.s_addr = inet_addr(ip_addr);
 
     struct sockaddr_in own_addr;
 
@@ -113,7 +149,6 @@ int main(int argc, char ** argv)
     int tie = 5;
     bool game_on = false;
     bool is_player1 = false;
-    bool is_udp;
 
     clock_t start, end;
     double delay_time[3];
@@ -141,27 +176,6 @@ int main(int argc, char ** argv)
 
     struct pollfd poll_fd[2];
     int ret;
-
-    /*
-        Checks the protocol and if client connected to server
-    */
-    if (!strncmp("UDP", argv[2], 3) || 
-        !strncmp("udp", argv[2], 3) || 
-        !strncmp("Udp", argv[2], 3)) 
-    {
-        is_udp = true;
-    }
-    else if (!strncmp("TCP", argv[2], 3) || 
-             !strncmp("tcp", argv[2], 3) || 
-             !strncmp("Tcp", argv[2], 3)) 
-    {
-        is_udp = false;
-    }
-    else
-    {
-        printf("Protocolo não utilizado.\n");
-        exit(EXIT_FAILURE);
-    } 
 
     client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG);
     if (client_sockfd == -1)
@@ -556,7 +570,8 @@ int main(int argc, char ** argv)
                 }
             }
         /*  call rejected  or not online*/
-            else if (!strncmp (server_message, NACK_accept, sizeof(NACK_accept)))
+            else if (!strncmp (server_message, NACK_accept, sizeof(NACK_accept)) ||
+                     !strncmp (server_message, NACK_accept, sizeof(NACK_accept)))
             {
                 printf("    %s\n", NACK_accept);
                 front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 

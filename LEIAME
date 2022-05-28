@@ -12,30 +12,53 @@ NUSP: 5948611
 
     Conteúdo do arquivo "ep2-daniel-pedro.tar"
 
-    EP1_broker_server.c (fonte)
-    Makefile
-    LEIAME
-    Apt.pdf 
+    Fontes Cliente:
+        EP2_Client.c      
+        C_Aux_Handlers.c  
+        C_Aux_Handlers.h 
+        Hash_Game.c       
+        Hash_Game.h  
+
+    Fontes Servidor: 
+        EP2_Server.c      
+        DB_Manag_Sys.c    
+        DB_Manag_Sys.h 
+        S_Aux_Handlers.c  
+        S_Aux_Handlers.h
+     
+    Protocolos: 
+        Protocol.h  
+
+    Auxiliador de compilação:
+        Makefile
+
+    Documentação
+        LEIAME
+        apt.pdf
    
 
 2.INSTRUÇÕES___________________________________________________________________
 
   Observações inicias:
 
-          A máquina cujo programa será executado deve ser compatível com
-          as principais funções GNU/Linux em especial as referidas pela
-          definição _GNU_SOURCE e as bibliotecas:
+        A máquina cujo programa será executado deve ser compatível com
+        as principais funções GNU/Linux em especial as referidas pela
+        definição _GNU_SOURCE e as bibliotecas:
 
+        stdio.h
+        stdlib.h
+        string.h
+        unistd.h
         sys/types.h
         sys/socket.h
-        sys/wait.h
-        unistd.h
+        arpa/inet.h
         netinet/in.h
-        sys/stat.h
-        fcntl.h
-        stdint.h
+        netinet/in.h
+        stdbool.h
+        poll.h
         signal.h
-
+        sys/wait.h
+        time.h
 
 
   2.1   Para gerar os códigos binários, abrir pasta desempacotada no shell e
@@ -43,33 +66,95 @@ NUSP: 5948611
 
           	Exemplo: ~/dir1/dir2 >$ make
 
-        Obs.: Para grande número de conexões é indicado acertos nas variáveis
-        ulimit 
 
-            Exemplo: ~/dir1/dir2 >$ ulimit -n  4096 && ulimit -s unlimited
+  2.2   Para rodar o binário do servidor digitar: 
+        "./EP2_Server (número da porta)"
 
-  2.2   Para rodar o binário digitar "./EP1_broker_server"
+          	Exemplo: ~/dir1/dir2 >$ ./EP2_Server 5000
 
-          	Exemplo: ~/dir1/dir2 >$ ./EP1_broker_server
+  2.2.1 Para rodar o binário do servidor em modo debug digitar:
+            "./EP2_Server (número da porta) -d"
 
+        Exemplo: ~/dir1/dir2 >$ ./EP2_Server 5000 -d
 
-  2.3   Como trata-se de um servidor mosquitto a porta padrão de uso é a 1883
-        não havendo necessidade de delimitação, contudo, caso houver um número
-        depois da chamada do programa:
+  2.3   Para rodar o binário de um cliente digitar:
+        "./EP2_Client -p (número da porta) -t (tipo de protocolo) -i 
+                                        (Endereço ip da máquina do servidor)"
 
-            Exemplo: ~/dir1/dir2 >$ ./EP1_broker_server 9003
+        Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t udp -i "192.168.15.138"
+        Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t tcp -i "192.168.15.138"
 
-            Ele utilizará a porta indicada.
+  2.3.1 Para rodar o binário de um cliente digitar em modo debug:
+        "./EP2_Client -p (número da porta) -t (tipo de protocolo) -i 
+                                    (Endereço ip da máquina do servidor) -d"
 
-        Obs.: o Wireshark é capaz de identificar os pacotes como "MQTT" pela 
-        porta 1883.
+        Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t udp -i "192.168.15.138" -d
 
-  2.3   Para finalizar pressionar "Ctrl+C" no terminal.
+        OBS.1: O modo debug do cliente dificulta entendimento e digitação de 
+        input, mas torna visível o que está ocorrendo por detrás do front-end, 
+        como envio e recebimento de ping.
+
+  2.4   Comandos de cliente são os mesmos pedidos no enunciado deste EP:
+
+        • new <usuario> <senha>: cria um novo usuário.
+                Não usar nomes e senhas grandes (> 16 caractéres).
+                Não nomes ou senhas com espaço 
+                    e.g: Pvt. Hudson (Preferir: Pvt_Hudson).
+                
+        • pass <senha antiga> <senha nova>: muda a senha do usuário
+                Não senhas grandes (> 16 caractéres).
+                
+        • in <usuario> <senha>: usuário entra no servidor.
+
+        • halloffame: informa a tabela de pontuação de todos os usuários 
+          registrados no sistema.
+
+        • l: lista todos os usuários conectados no momento e se estão ocupados 
+          em uma partida ou não.
+
+        • call <oponente>: convida um oponente para jogar. 
+          Ele pode aceitar ou não.
+
+            O outro oponente receberá, sem precisar digitar nada,
+            a seguinte mensagem:
+
+            JogoDaVelha> Invitation for game received from Ripley!
+                ...accept? (y/n):
+
+            Então deve escolher (y-sim || n-não). e.g.:
+
+            JogoDaVelha> Invitation for game received from Ripley!
+                ...accept? (y/n): y (e pressionar enter)
+
+        • play <linha> <coluna>: envia a jogada.
+            Em caso de comando em casa repetida fornecer
+            Linha: input correta (e pressionar enter)
+            Coluna: input correta (e pressionar enter)
+
+        • delay: durante uma partida, informa os 3 últimos valores de latência.
+
+        • over: encerra uma partida antes da hora.
+
+        • out: desloga.
+
+        • bye: finaliza a execução do cliente e retorna para o shell 
+          do sistema operacional
+            Não é preciso deslogar no caso do bye sem out anterior.
+
+        OBS.2: todos comandos acima devem ter os seus respectivos espaçamentos 
+                respeitados. e.g.: (new" "Ripley" "2092):
+                input aceitável: JogoDaVelha> new Ripley 2092
+
+  2.5   Para finalizar o servidor pressionar "Ctrl+C" no terminal.
+
+  2.6   Para finalizar o cliente  digitar bye.
+                input aceitável: JogoDaVelha> bye
 
 
 
 3.REFERÊNCIAS__________________________________________________________________
 
+3.1 BIBLIOGRAFIA
 
     - Cooper, M. (2014). Advanced bash scripting guide: An in-depth exploration 
     of the art of shell scripting (Vol. 1). Domínio público, 10 Mar 2014.
@@ -77,8 +162,13 @@ NUSP: 5948611
     - Kurose, J. and Ross, K., 2016. Computer Networking. Harlow, United 
     Kingdom: Pearson Education Canada.
 
-    Sites:
-        Oasis:           docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html 
-        Wikipedia:       https://en.wikipedia.org 
-        Michael Kerrisk: man7.org 
-        Die(Dice):       https://linux.die.net/  
+3.2 Sites:
+
+    Codingunit:      https://www.codingunit.com/c-tutorial-deleting-and-renaming-a-file
+    Die(Dice):       https://linux.die.net/  
+    Fabio Busatto:   https://tldp.org/HOWTO/TCP-Keepalive-HOWTO/programming.html
+    Michael Kerrisk: https://man7.org 
+    Oasis:           https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html 
+    Wikipedia:       https://en.wikipedia.org 
+    
+    

@@ -318,13 +318,13 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
             write(front_end_pipe, (void *) user_input, (size_t) strlen(user_input));
             if (need_loop)
             {
-                read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
-                printf("    %s\n", server_message);
-                if (!strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged))) 
-                {
-                    need_loop = false;
-                    continue;
-                }
+                // read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
+                // printf("    %s\n", server_message);
+                // if (!strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged))) 
+                // {
+                //     need_loop = false;
+                //     continue;
+                // }
                 while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
                        strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
                 {
@@ -349,6 +349,9 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                 read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
                 printf("    %s\n", server_message);
             }
+            /*
+                resposta servidor
+            */
             memset((void *) user_input, 0, sizeof(user_input));
             memset((void *) server_message, 0, sizeof(server_message));
             invalid_command = true;
