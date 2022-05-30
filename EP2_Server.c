@@ -163,7 +163,7 @@ int main(int argc, char ** argv)
             fd[1].fd = listen_fd;
             fd[1].events = POLLIN;
 
-            ret = poll(fd, 2, 0);
+            ret = poll(fd, 2, -1);
             if (ret == -1) {
                 perror ("poll"); 
                 return 1;
@@ -192,8 +192,6 @@ int main(int argc, char ** argv)
                         printf("Error: sendto failed");
                         exit(EXIT_FAILURE);
                     }
-                    sprintf(event, "[UDP client connected] ip: %s\n", player_ip);
-                    log_event(event);
                     printf("[UDP client connected]\n");
                 }
                 else 
@@ -219,8 +217,8 @@ int main(int argc, char ** argv)
                     close(udp_fd);
                     close(listen_fd);
                     
-                    if(n_clients)client_handler(player_ip, true, player2_rd[0], player2_wr[1], aux_udp_port + 1, 0, DEBUG);
-                    else client_handler(player_ip, true, player1_rd[0], player1_wr[1], aux_udp_port, 0, DEBUG);
+                    if(n_clients)client_handler(player_ip, true, player2_rd[0], player2_wr[1], aux_udp_port + 1, port, DEBUG);
+                    else client_handler(player_ip, true, player1_rd[0], player1_wr[1], aux_udp_port, port, DEBUG);
 
                     return 0;
                 }
@@ -253,8 +251,6 @@ int main(int argc, char ** argv)
                         printf("Error: send failed");
                         exit(EXIT_FAILURE);
                     }
-                    sprintf(event, "[TCP client connected] ip: %s\n", player_ip);
-                    log_event(event);
                     printf("[TCP client connected]\n");
                 }
                 if ((player_id = fork()) == -1)
@@ -290,7 +286,7 @@ int main(int argc, char ** argv)
         fd[1].fd = player2_wr[0];
         fd[1].events = POLLIN;
 
-        ret = poll(fd, 2, 0);
+        ret = poll(fd, 2, -1);
         if (ret == -1) {
             printf("Error: poll failed!\n");
             return 1;

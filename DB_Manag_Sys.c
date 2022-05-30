@@ -271,9 +271,10 @@ int halloffame_sender(int pipe)
         sprintf(line, "%s %s", user, score);
         write(pipe, (void *) line, sizeof(line));
         memset((void *)line, 0, 64);
-        usleep(25000);
+        usleep(50000);
     }
     fclose(fp);
+    usleep(50000);
     return 0;
 }
 
@@ -306,10 +307,11 @@ int l_sender(int pipe)
                 sprintf(line, "%s | não", user);
             }   
             write(pipe, (void *) line, sizeof(line));
-            usleep(25000);
+            usleep(50000);
         }
         memset((void *)line, 0, 64);
     }
     fclose(fp);
+    usleep(50000);
     return 0;
 }
