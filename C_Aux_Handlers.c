@@ -103,7 +103,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                     {
                         printf("\nServidor fechou a conexão tcp!\n");
                         close(client_sockfd);
-                        write(listener_pipe, (void *) Reconnect, (size_t) sizeof(Reconnect));
+                        write(listener_pipe, (void *) Reconnect,  sizeof(Reconnect));
                         return 0;
                     }
                 }

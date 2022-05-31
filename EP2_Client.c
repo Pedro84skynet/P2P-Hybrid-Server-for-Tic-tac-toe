@@ -229,13 +229,13 @@ int main(int argc, char ** argv)
             {
                 printf("Bye command ...exiting!\n");
                 write(sender_pipe[1], (void *) client_message, sizeof(client_message));
-                sleep (3);
                 // closing pipes
                 close(client_sockfd);
                 close(listener_pipe[0]); close(listener_pipe[1]);
                 close(sender_pipe[0]); close(sender_pipe[1]);
                 close(front_end_pipe[0]); close(front_end_pipe[1]);
                 close(back_end_pipe[0]); close(back_end_pipe[1]);
+                sleep (5);
                 // killing aux's
                 kill(sender, SIGKILL);
                 kill(listener, SIGKILL);
@@ -424,9 +424,9 @@ int main(int argc, char ** argv)
                     memset((void *) processed_message, 0, sizeof(processed_message));
                     sprintf(processed_message, "%s %s %s", ACK_accept, user_name, othername);
                     processed_message[strlen(processed_message)] = '\0';
-                    if(DEBUG) printf("[Main process] call processed %s len: %zu\n", server_message,
+                    if(DEBUG) printf("[Main process] call processed %s len: %zu\n", processed_message,
                                         strlen(processed_message));
-                    write(sender_pipe[1], (void *) processed_message, sizeof(processed_message));
+                    write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
                     memset((void *)&own_addr, 0, sizeof(own_addr));
                     own_addr.sin_family = AF_INET;
                     own_addr.sin_port = htons(p2p_port);

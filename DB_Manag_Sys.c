@@ -48,12 +48,12 @@ int insert_user(char * username, char * password)
         printf("Error: database did not opened.\n");
         return 1;
     }
-    fprintf(fp,"%s %s %d %d %d\n", username, password, 0, 0, 0);
+    fprintf(fp,"%s %s %d %d %d %d %d\n", username, password, 0, 0, 0, 0, 0);
     fclose(fp);
     return 0;
 }
 
-int log_user(char * username, char * password)
+int log_user(char * username, char * password, char * new_ip, int new_pipe)
 {
     FILE * fp;
     char line[64], line_tokenized[64];
@@ -87,19 +87,18 @@ int log_user(char * username, char * password)
     }
     else
     {
-        change_data(username, 2);
+        change_data(username, 2, new_ip, new_pipe);
         return 0;
     }
     fclose(fp);
 }
 
-int change_data(char *username, int cod) 
+int change_data(char *username, int cod, char * new_ip, int new_pipe) 
 {
-    FILE* fp_db;
+    FILE* fp_db; 
     FILE* fp_new_db;
-
-    char *token, *user, *password; 
-    int score,  is_on, in_game;
+    char *token, *user, *password, *ip;
+    int score,  is_on, in_game, pipe_num; 
     in_game = 2;
     char line[64], line_tokenized[64], event[64];
     
@@ -122,14 +121,22 @@ int change_data(char *username, int cod)
             if (cod == 2) 
             {
                 is_on = (is_on == 0) ?  1 :  0;
+                ip = new_ip;
+                pipe_num = new_pipe;
 
             }
-            in_game = atoi(strtok(NULL, "\n"));
+            in_game = atoi(strtok(NULL, " "));
             if (cod == 3) 
             {
                 in_game = (in_game == 0) ?  1 :  0;
             }
-            fprintf(fp_new_db,"%s %s %d %d %d\n", username, password, score, is_on, in_game);
+            if (cod != 2)
+            {
+                ip = strtok(NULL, " ");
+                pipe_num = atoi(strtok(NULL, " "));
+            }
+            fprintf(fp_new_db,"%s %s %d %d %d %s %d\n", 
+                        username, password, score, is_on, in_game, ip, pipe_num);
         } 
         else
         {
@@ -162,7 +169,7 @@ int change_pass(char *username, char *old_pass, char *new_pass)
     FILE* fp_db;
     FILE* fp_new_db;
 
-    char *user, *password, *n_vic, *is_on, *in_game;
+    char *user, *password, *n_vic, *is_on, *in_game, *ip, *pipe;
     char line[64], line_tokenized[64], event[64];
     int cut;
 
@@ -187,9 +194,11 @@ int change_pass(char *username, char *old_pass, char *new_pass)
                 n_vic = strtok(NULL, " ");
                 is_on = strtok(NULL, " ");
                 in_game = strtok(NULL, " ");
+                ip = strtok(NULL, " ");
+                pipe = strtok(NULL, " ");
                 memset((void*) line, 0, 64);
-                fprintf(fp_new_db,"%s %s %d %d %d\n", username, new_pass, 
-                            atoi(n_vic), atoi(is_on), atoi(in_game));
+                fprintf(fp_new_db,"%s %s %d %d %d %s %s\n", username, new_pass, 
+                            atoi(n_vic), atoi(is_on), atoi(in_game), ip, pipe);
 
             }  
         }  
@@ -242,15 +251,78 @@ bool is_online(char *username)
             is_on = strtok(NULL, " ");
             if (!strncmp(is_on, "1", 1))
             {
+                fclose(fp);
                 return true;
             } 
             else
             {
+                fclose(fp);
                 return false;
             }
         }
     }
+    fclose(fp);
     return false;
+}
+
+int what_pipe(char *username)
+{
+    FILE *fp;
+    char line[64];
+    char *token, *n_vic, *password, *is_on, *in_game, *ip; 
+    int pipe_num;
+    fp = fopen("database.txt", "r");
+    while (fgets(line, 64, fp))
+    {
+        token = strtok(line, " ");
+        if (!strncmp(username, token, sizeof(username)))
+        {
+            password = strtok(NULL, " ");
+            n_vic = strtok(NULL, " ");
+            is_on = strtok(NULL, " ");
+            in_game = strtok(NULL, " ");
+            ip = strtok(NULL, " ");
+            pipe_num = atoi(strtok(NULL, " "));
+            fclose(fp);
+            return pipe_num;
+        }
+    }
+    return -1;
+}
+
+char * what_ip(char *username)
+{
+    FILE *fp;
+    char line[64];
+    char * token, * n_vic, * password, * is_on, * in_game, * ip, * pipe_num;
+    char * ip_copy;
+    fp = fopen("database.txt", "r");
+    while (fgets(line, 64, fp))
+    {
+        token = strtok(line, " ");
+        if (!strncmp(username, token, sizeof(username)))
+        {
+            password = strtok(NULL, " ");
+            n_vic = strtok(NULL, " ");
+            is_on = strtok(NULL, " ");
+            in_game = strtok(NULL, " ");
+            ip = strtok(NULL, " ");
+            if (!strncmp(is_on, "1", 1))
+            {
+                fclose(fp);
+                ip_copy = (char *) malloc(strlen(ip));
+                strncpy(ip_copy, ip, strlen(ip));
+                ip_copy[strlen(ip)] = '\0';
+                return ip_copy;
+            } 
+            else
+            {
+                fclose(fp);
+                return NULL;
+            }
+        }
+    }
+    return NULL;
 }
 
 int halloffame_sender(int pipe)

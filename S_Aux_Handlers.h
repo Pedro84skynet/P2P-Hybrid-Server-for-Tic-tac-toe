@@ -40,13 +40,14 @@ struct client_info {
 /******************************************************************************/
 /*    MASTER HANDLER                                                          */
 /******************************************************************************/
-int master_handler(int player_rd, char * client_message, bool DEBUG);
+int master_handler(int player_rd[128][2], char * client_message, 
+                   bool DEBUG, int this_pipe);
 
 /******************************************************************************/
 /*    CLIENT HANDLER                                                          */
 /******************************************************************************/
 int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write, 
-                    uint16_t port, int tcp_fd, bool DEBUG);
+                   uint16_t port, int tcp_fd, bool DEBUG, int pipe_num);
 
 
 #endif
