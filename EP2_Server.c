@@ -54,7 +54,15 @@ static bool DEBUG = false;
 /*****************************************************************************************************/
 int main(int argc, char ** argv)
 {
-    uint16_t port = (uint16_t)atoi(argv[1]);
+    struct sigaction sig;
+    sig.sa_handler = &handler_close;
+    sigaction(SIGINT, &sig, NULL); 
+
+    struct sigaction sig2;
+    sig2.sa_handler = &handler_close;
+    sigaction(SIGTERM, &sig2, NULL);
+    
+    uint16_t port = (uint16_t) atoi(argv[1]);
     uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
 
     for (int i = 0; i < argc; i++)
@@ -136,9 +144,6 @@ int main(int argc, char ** argv)
     
     int n_clients = 0;
     int calc_pipe;
-    
-    struct client_info player1;
-    struct client_info player2;
 
     socklen_t len;
     ssize_t nbytes; 
@@ -153,11 +158,13 @@ int main(int argc, char ** argv)
     while(1) 
     {
         if(DEBUG)printf("[Main] n_clients online: %d, nfds: %ld\n", n_clients, nfds);
+
         ret = poll(fd, nfds, timeout);
         if (ret == -1) {
             printf("Error: poll failed!\n");
             return 1;
         }
+
         /* UDP client*/
         if ((fd[0].revents == POLLIN) && fd[0].fd == udp_fd) 
         { 
@@ -192,8 +199,7 @@ int main(int argc, char ** argv)
                 close(udp_fd);
                 continue;
             }
-            if (n_clients) CHANGE_PORT = htons(aux_udp_port + 1);
-            else CHANGE_PORT = htons(aux_udp_port);
+            CHANGE_PORT = htons(aux_udp_port + n_clients);
             if (sendto(udp_fd, (void *) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
                             (const struct sockaddr *) &serv_addr, len) == -1)
             {
@@ -210,11 +216,8 @@ int main(int argc, char ** argv)
                 close(udp_fd);
                 close(listen_fd);
                 
-                if(n_clients)client_handler(player_ip, true, player_rd[n_clients][0], 
-                                            player_wr[n_clients][1], aux_udp_port + 1, 
-                                            port, DEBUG, n_clients);
-                else client_handler(player_ip, true, player_rd[n_clients][0], 
-                                    player_wr[n_clients][1], aux_udp_port, 
+                client_handler(player_ip, true, player_rd[n_clients][0], 
+                                    player_wr[n_clients][1], aux_udp_port + n_clients, 
                                     port, DEBUG, n_clients);
 
                 return 0;
@@ -282,6 +285,7 @@ int main(int argc, char ** argv)
             nfds++;    
         }
 
+        /* Player processor's pipes */
         for (int i = 0; i < n_clients; i++)
         {
             if (fd[i + 2].revents == 0) continue;

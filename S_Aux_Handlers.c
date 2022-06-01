@@ -42,6 +42,14 @@
 #include "DB_Manag_Sys.h"
 #include "Protocol.h"
 
+/*signal to log close*/
+void handler_close(int sig)
+{
+    printf("\nServer shut down!\n");
+    log_event("Server shut down!");
+    exit(0);
+}
+
 
 /**************************************************************************************/
 /*                                                                                    */
@@ -351,6 +359,12 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         write(player_rd[this_pipe][1], Draw, sizeof(Draw));
         write(player_rd[what_pipe(loser)][1], Draw, sizeof(Draw));
     }
+    else if (!strncmp(command, Client_down, sizeof(Client_down)))
+    {
+        user = strtok(NULL, " ");
+        sprintf(event,"Lost connection with user %s. (ip : %s)", user, what_ip(user));
+        log_event(event);
+    }
 }
 
 
@@ -446,7 +460,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
             if (strncmp(client_message, Ping, sizeof(Ping)))
             {
-                write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                write(listener_pipe[1], (void *) client_message, sizeof(client_message));
             }
         }
         n_bytes = 1;
@@ -464,7 +478,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             }
             if(ret == 0) // Client is not responding!
             {
-                printf("\n...Client is not responding!\n");
+                printf("\n...Client is not responding!\n"); 
+                write(listener_pipe[1], (void *) Client_down, sizeof(Client_down));
             }
             if ((listen_poll_fd[0].revents & POLLIN) && 
                 ((listen_poll_fd[0].fd == udp_fd)    ||
@@ -491,7 +506,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 if (strncmp(client_message, Ping, sizeof(Ping)))
                 {   
                     if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
-                    write(listener_pipe[1], (void *) client_message, (size_t) sizeof(client_message));
+                    write(listener_pipe[1], (void *) client_message, sizeof(client_message));
                 } 
             }
         }

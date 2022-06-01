@@ -30,12 +30,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-struct client_info {
-    char ip[16];
-    uint16_t port;
-    uint16_t P2P_port;
-    bool main;
-};
+/*signal to log close*/
+void handler_close(int sig);
 
 /******************************************************************************/
 /*    MASTER HANDLER                                                          */
