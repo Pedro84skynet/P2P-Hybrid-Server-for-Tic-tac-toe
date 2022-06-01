@@ -319,9 +319,9 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         ip_p1 = what_ip(user); 
         ip_p2 = what_ip(loser);
         if(DEBUG) printf("[Master handler] winner:%s (ip: %s) loser: %s (ip: %s)\n", 
-                            winner, loser, ip_p1, ip_p2);
-        sprintf(event,"[Master handler] winner:%s (ip: %s) loser: %s (ip: %s)\n", 
-                            winner, loser, ip_p1, ip_p2);
+                            winner, ip_p1, loser, ip_p2);
+        sprintf(event,"[Master handler] winner:%s (ip: %s) loser: %s (ip: %s)", 
+                            winner, ip_p1, loser, ip_p2);
         log_event(event);
         write(player_rd[this_pipe][1], You_won, sizeof(You_won));
         if(change_data(winner, 1, NULL, 0))
@@ -355,9 +355,9 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         ip_p1 = what_ip(user); 
         ip_p2 = what_ip(loser);
         if(DEBUG) printf("[Master handler] draw between %s (ip: %s) and %s (ip: %s)\n", 
-                            winner, loser, ip_p1, ip_p2);
-        sprintf(event,"[Master handler] draw between %s (ip: %s) and %s (ip: %s)\n", 
-                            winner, loser, ip_p1, ip_p2);
+                            winner, ip_p1, loser, ip_p2);
+        sprintf(event,"[Master handler] draw between %s (ip: %s) and %s (ip: %s)", 
+                            winner, ip_p1, loser, ip_p2);
         log_event(event);
         if(change_data(winner, 3, NULL, 0))
         {
