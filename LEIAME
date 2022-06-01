@@ -72,6 +72,10 @@ NUSP: 5948611
 
           	Exemplo: ~/dir1/dir2 >$ ./EP2_Server 5000
 
+        OBS.1: Este programa utiliza portas diferentes para cada cliente
+        udp. É recomendado o desligamento temporário do firewall. Regras
+        de portas especificas não são recomendadas neste caso.
+
   2.2.1 Para rodar o binário do servidor em modo debug digitar:
             "./EP2_Server (número da porta) -d"
 
@@ -90,7 +94,7 @@ NUSP: 5948611
 
         Exemplo: ~/dir2 >$ ./EP2_Client -p 5000 -t udp -i "192.168.15.138" -d
 
-        OBS.1: O modo debug do cliente dificulta entendimento e digitação de 
+        OBS.2: O modo debug do cliente dificulta entendimento e digitação de 
         input, mas torna visível o que está ocorrendo por detrás do front-end, 
         como envio e recebimento de ping.
 
@@ -141,13 +145,13 @@ NUSP: 5948611
           do sistema operacional
             Não é preciso deslogar no caso do bye sem out anterior.
 
-        OBS.2:  Todos comandos acima devem ter os seus respectivos espaçamentos 
+        OBS.3:  Todos comandos acima devem ter os seus respectivos espaçamentos 
                 respeitados. e.g.: (new" "Ripley" "2092):
                 input aceitável: JogoDaVelha> new Ripley 2092
 
-        OBS.3:  Nenhum comando neste programa nescessita de espaçamento inicial.
+        OBS.4:  Nenhum comando neste programa nescessita de espaçamento inicial.
                 e.g: 
-            JogoDaVelha>(Espaço do prompt,não de digitação do usuário)in Ripley 2092
+        JogoDaVelha>(Espaço do prompt,não de digitação do usuário)in Ripley 2092
 
   2.5   Para finalizar o servidor pressionar "Ctrl+C" no terminal.
 
