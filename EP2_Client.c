@@ -398,7 +398,7 @@ int main(int argc, char ** argv)
     */
         if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
         {
-            read(listener_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+            read(listener_pipe[0], (void *) server_message, sizeof(server_message));
             if(DEBUG) printf("[Main process] Main recebeu do main_pipe: %s\n", server_message);
         
         /*  Specials Cases*/
@@ -598,18 +598,27 @@ int main(int argc, char ** argv)
             else if (!strncmp(server_message, Reconnect, sizeof(Reconnect)))
             {
                 printf("\n%s\n", server_message);
-                write (back_end_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                kill (listener, SIGKILL);
                 kill(sender, SIGKILL);
-                kill(listener, SIGKILL);
                 kill(front_end, SIGKILL);
                 close(client_sockfd);
-
-                try_c = 0;
+                if (is_udp)
+                {
+                    memset((void *)&serv_addr, 0,  sizeof(serv_addr));
+                    serv_addr.sin_family = AF_INET;
+                    serv_addr.sin_port = htons(port); 
+                    serv_addr.sin_addr.s_addr = inet_addr(ip_addr);
+                    try_c = 10; // Already wait 30 seconds by ping waiting
+                }
+                else
+                {
+                    try_c = 0;
+                }
                 client_sockfd = -1;
                 while (client_sockfd == -1 && try_c < 59)
                 {
                     client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG); 
-                    sleep(3);
+                    if (!is_udp) sleep(3);
                     try_c++;
                     printf("...attempt %d/60: ", try_c);
                 }
@@ -630,13 +639,29 @@ int main(int argc, char ** argv)
                     if (listener == 0 || sender == 0 || front_end == 0)
                     {
                         return 0;
+                    } 
+                    if (logged)
+                    {
+                        memset((void *) processed_message, 0, sizeof(processed_message));
+                        sprintf(processed_message, "%s %s", NACK_already_logged, username);
+                        processed_message[strlen(processed_message)] = '\0';
+                        write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
                     }
                 }
                 printf("...Back to normal with server!\n");
             }
             else
             {
-                write(back_end_pipe[1], (void *) server_message, (size_t) sizeof(server_message));
+                /*  ACK_in_user  */
+                if (!strncmp (server_message, ACK_in_user, sizeof(ACK_in_user)))
+                {
+                    logged = true;
+                }
+                else if (!strncmp (server_message, ACK_out_user, sizeof(ACK_out_user)))
+                {
+                    logged = false;
+                }
+                write(back_end_pipe[1], (void *) server_message, sizeof(server_message));
                 memset((void *) server_message, 0, sizeof(server_message));
                 usleep(50000);
             }

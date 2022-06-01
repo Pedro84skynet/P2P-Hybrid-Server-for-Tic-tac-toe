@@ -293,11 +293,11 @@ int main(int argc, char ** argv)
             {
                 /* Atualiza banco de dados com requisições do 
                 processo do servidor referente a player 1*/
+                memset(client_message, 0, sizeof(client_message));
                 if(DEBUG) printf("[Main Process] poll: pipe do Player %d!\n", i);
                 read(player_wr[i][0], client_message, sizeof(client_message));
                 if(DEBUG) printf("[Main Process] read from player%i_wr[0]: %s\n", i, client_message);
-                master_handler(player_rd, client_message, DEBUG, i);
-                memset(client_message, 0, sizeof(client_message));
+                master_handler(player_rd, client_message, DEBUG, i); 
             } 
         }
     }

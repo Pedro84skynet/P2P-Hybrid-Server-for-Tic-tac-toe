@@ -32,7 +32,7 @@
 #define ACK_out_user         "...logged out!"
 #define NACK_out_user        "...error: still logged"
 #define ACK_bye_user         "...bye!"
-#define NACK_already_logged  "...Already Logged!"
+#define NACK_already_logged  "...Already_Logged!"
 #define NACK_not_logged      "...you need to be logged!"
 #define ACK_hallofame        "********************"
 #define NACK_hallofame       "...hall of fame not available"
@@ -50,6 +50,7 @@
 #define I_win                "...have_won!"
 #define You_won              "...You won! ...congratulations!"
 #define You_lose             "...You lose"
+
 
 #endif
 

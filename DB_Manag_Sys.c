@@ -48,7 +48,7 @@ int insert_user(char * username, char * password)
         printf("Error: database did not opened.\n");
         return 1;
     }
-    fprintf(fp,"%s %s %d %d %d %d %d\n", username, password, 0, 0, 0, 0, 0);
+    fprintf(fp,"%s %s %d %d %d %p %d\n", username, password, 0, 0, 0, NULL, 0);
     fclose(fp);
     return 0;
 }
