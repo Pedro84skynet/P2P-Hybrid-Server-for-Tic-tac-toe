@@ -374,8 +374,8 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
     }
     else if (!strncmp(command, Client_down, sizeof(Client_down)))
     {
-        user = strtok(NULL, " ");
-        sprintf(event,"Lost connection with user %s. (ip : %s)", user, what_ip(user));
+        ip_p1 = strtok(NULL, " ");
+        sprintf(event,"Lost connection with ip : %s", ip_p1);
         log_event(event);
     }
 }
@@ -511,6 +511,12 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 if (n_bytes == -1)
                 {
                     printf("Erro: receive from client_handler failed\n");
+                    exit(EXIT_FAILURE);
+                }
+                if (n_bytes == 0)
+                {
+                    printf("\n...Client is not responding!\n"); 
+                    write(listener_pipe[1], (void *) Client_down, sizeof(Client_down));
                     exit(EXIT_FAILURE);
                 }
                 client_message[n_bytes + 1] = '\0';
@@ -707,22 +713,37 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             /*  Must concatenate request with username before send to master.                         */
                 else if (!strncmp(command, "pass", 4) ||
                          !strncmp(command, "call", 4) || 
-                         !strncmp(command, "out" , 3))
+                         !strncmp(command, "out" , 3)) 
                 {
                     if(logged) 
                     {
+                        memset(client_message_processed, 0, sizeof(client_message_processed));
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
                         if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %zu\n", 
                                           client_message_processed, 
                                           strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, strlen(client_message_processed)); 
-                        memset(client_message_processed, 0, sizeof(client_message_processed));
                     } 
                     else
                     { 
                         write(sender_pipe[1], (void *) NACK_not_logged, (size_t) sizeof(NACK_not_logged));
                     }
+                }
+                else if (!strncmp(command, Client_down , sizeof(Client_down)))
+                {
+                    memset(client_message_processed, 0, sizeof(client_message_processed));
+                    sprintf(client_message_processed, "%s %s", client_message, ip); 
+                    client_message_processed[strlen(client_message_processed)] = '\0';
+                    if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %zu\n", 
+                                        client_message_processed, 
+                                        strlen(client_message_processed));
+                    write(pipe_write, (void *) client_message_processed, strlen(client_message_processed));
+                    sleep (5);
+                    // killing aux's
+                    kill(sender, SIGKILL);
+                    kill(listener, SIGKILL);
+                    return 0;
                 }
             /*  BYE  */
             /*  Must concatenate request with username in logged case before send to master.          */

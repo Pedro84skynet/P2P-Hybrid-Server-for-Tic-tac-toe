@@ -400,6 +400,7 @@ int Connect_Procedure(bool is_udp, int client_sockfd,
             return -1;
         }
         if (ret == 0) {
+            printf("Error: recvfrom failed!\n");
             return -1;
         }
         if ((poll_fd[0].revents == POLLIN) && poll_fd[0].fd == client_sockfd) 
