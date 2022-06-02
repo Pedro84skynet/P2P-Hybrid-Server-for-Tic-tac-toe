@@ -284,9 +284,17 @@ int main(int argc, char ** argv)
                             exit(EXIT_FAILURE);
                         }
                         end = clock();
-                        delay_time[c_tick%3] = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
-                        if(DEBUG) printf("Latency: %lf ms\n", delay_time[c_tick%3]);
-                        c_tick++;
+
+                        // saves delay of this turn
+                        float aux = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
+
+                        for (int i = 0; i < 3; i++) {
+                            float tmp = delay_time[i];
+                            delay_time[i] = aux;
+                            aux = tmp;
+                        }
+
+                        if(DEBUG) printf("Latency: %lf ms\n", delay_time[0]);
                         if (hashtable[0] == 0)
                         {
                             if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
@@ -379,7 +387,6 @@ int main(int argc, char ** argv)
         /*  DELAY  */
             else if (!strncmp (client_message, "delay", 5))
             {
-                memset((void *) l3_delay, 0, sizeof(l3_delay));
                 sprintf(l3_delay, "Latência (3 últimas): %.3lf ms %.3lf ms %.3lf ms.", delay_time[0], delay_time[1], delay_time[2]);
                 write(back_end_pipe[1], (void *) l3_delay, sizeof(l3_delay));
             }
