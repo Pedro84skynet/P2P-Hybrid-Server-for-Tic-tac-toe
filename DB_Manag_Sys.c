@@ -109,7 +109,7 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
         line[strlen(line) - 1] = '\0'; 
         strncpy(line_tokenized, line, strlen(line));
         token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username) - 1))
+        if (!strncmp(token, username, strlen(username) + 1))
         {
             password = strtok(NULL, " ");
             score = atoi(strtok(NULL, " "));
