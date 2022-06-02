@@ -45,7 +45,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
 {
     pid_t listener;
     int n_bytes, len, ret; 
-    char server_message[MESSAGE_SIZE_C];
+    char server_message[64];
 
     if ((listener = fork()) == -1)
     {
@@ -56,7 +56,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
     {
         len = sizeof(struct sockaddr_in);
         struct pollfd listen_poll_fd[1];
-        int timeout = 3*60*1000; // 3 minutos
+        int timeout = 30000; 
 
         n_bytes = 1;
         while (1) 
@@ -74,8 +74,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
             {
                 if(DEBUG) printf("\n[Listener] Listener não recebeu nenhuma conexão do servidor\n");
                 close(client_sockfd);
-                write(listener_pipe, (void *) Server_down, (size_t) strlen(Server_down));
-                sleep(10);
+                write(listener_pipe, (void *) Reconnect, sizeof(Reconnect));
                 return 0;
             }
             if ((listen_poll_fd[0].revents & POLLIN) && 
@@ -103,7 +102,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                     {
                         printf("\nServidor fechou a conexão tcp!\n");
                         close(client_sockfd);
-                        write(listener_pipe, (void *) Reconnect,  strlen (Reconnect));
+                        write(listener_pipe, (void *) Reconnect,  sizeof(Reconnect));
                         return 0;
                     }
                 }
@@ -112,9 +111,9 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(server_message, Ping, sizeof(Ping)))
                 {
-                    write(listener_pipe, (void *) server_message, (size_t) strlen (server_message));   
+                    write(listener_pipe, (void *) server_message, (size_t) sizeof(server_message));   
                 }
-                memset((void *) server_message, 0, sizeof(server_message));
+                memset((void *)server_message, 0, sizeof(server_message));
             }
         }
         exit(EXIT_SUCCESS);
@@ -128,7 +127,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
 {
     pid_t sender;
     int n_bytes, len, ret; 
-    char client_message[MESSAGE_SIZE_C];
+    char client_message[64];
     
     if ((sender = fork()) == -1)
     {
@@ -215,8 +214,8 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
 {
     pid_t  front_end;
     int n_bytes, len, ret; 
-    char user_input[MESSAGE_SIZE_C], user_input_copy[MESSAGE_SIZE_C], server_message[MESSAGE_SIZE_C], client_message[MESSAGE_SIZE_C];
-    char other_player_name[MESSAGE_SIZE_C];
+    char user_input[64], user_input_copy[64], server_message[64], client_message[64];
+    char other_player_name[64];
     char * command, * player2;
     bool logged = false;
 
@@ -234,7 +233,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
         {
             while(invalid_command) {
                 printf("JogoDaVelha> ");
-                fgets(user_input, MESSAGE_SIZE_C, stdin);
+                fgets(user_input, 64, stdin);
                 if (!strncmp(user_input, "\n", 2))
                 {
                     continue;
@@ -366,12 +365,16 @@ int Connect_Procedure(bool is_udp, int client_sockfd,
     socklen_t len;
     ssize_t n_bytes;
 
+    int ret, timeout;
+
     /*Protocolos: */
     unsigned char CONNECT;
     unsigned char ACK_NACK;
     uint16_t CHANGE_PORT;
 
     CONNECT = 1;
+    ACK_NACK = 0;
+    timeout = 3000;
 
     if (is_udp)
     {
@@ -388,41 +391,56 @@ int Connect_Procedure(bool is_udp, int client_sockfd,
         }
         if(DEBUG) printf("[Connect Procedure]    enviou CONNECT %d\n", CONNECT);
         len = sizeof(struct sockaddr_in);
-        if (recvfrom(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0, 
-                        (struct sockaddr *) serv_addr, &len) == -1)
-        {
+        struct pollfd poll_fd[1];
+        poll_fd[0].fd = client_sockfd;
+        poll_fd[0].events = POLLIN;
+        ret = poll(poll_fd, 1, timeout);
+        if (ret == -1) {
+            printf("Error: poll from Connect_Procedure failed!\n");
+            return -1;
+        }
+        if (ret == 0) {
             printf("Error: recvfrom failed!\n");
             return -1;
         }
-        if (ACK_NACK == 1)
+        if ((poll_fd[0].revents == POLLIN) && poll_fd[0].fd == client_sockfd) 
         {
-            printf("    Alcançou o servidor.\n");
-        }
-        else
-        {
-            return -1;
-        }
-        if (recvfrom(client_sockfd, (void*) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
+            if (recvfrom(client_sockfd, &ACK_NACK, sizeof(ACK_NACK), 0, 
                         (struct sockaddr *) serv_addr, &len) == -1)
-        {
-            printf("Error: recvfrom failed!\n");
-            return -1;
-        }
-        if (CHANGE_PORT != 0)
-        {
-            close(client_sockfd);
-            if(DEBUG) printf("[Connect Procedure] Changing to aux port: %d\n", ntohs(CHANGE_PORT));
-            bzero(serv_addr, sizeof(struct sockaddr_in));
-            (*serv_addr).sin_family = AF_INET;
-            (*serv_addr).sin_port = CHANGE_PORT;
-            (*serv_addr).sin_addr.s_addr = inet_addr("192.168.15.15");
-            if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
             {
-                printf("Error: socket not created\n");
+                printf("Error: recvfrom failed!\n");
                 return -1;
             }
+            if (ACK_NACK == 1)
+            {
+                printf("    Alcançou o servidor.\n");
+            }
+            else
+            {
+                return -1;
+            }
+            if (recvfrom(client_sockfd, (void*) &CHANGE_PORT, sizeof(CHANGE_PORT), 0, 
+                            (struct sockaddr *) serv_addr, &len) == -1)
+            {
+                printf("Error: recvfrom failed!\n");
+                return -1;
+            }
+            if (CHANGE_PORT != 0)
+            {
+                close(client_sockfd);
+                if(DEBUG) printf("[Connect Procedure] Changing to aux port: %d\n", ntohs(CHANGE_PORT));
+                bzero(serv_addr, sizeof(struct sockaddr_in));
+                (*serv_addr).sin_family = AF_INET;
+                (*serv_addr).sin_port = CHANGE_PORT;
+                (*serv_addr).sin_addr.s_addr = inet_addr("192.168.15.15");
+                if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
+                {
+                    printf("Error: socket not created\n");
+                    return -1;
+                }
+            }
+            return client_sockfd;
         }
-        return client_sockfd;
     }
     /*  TCP    _______________________________________________________________*/
     else

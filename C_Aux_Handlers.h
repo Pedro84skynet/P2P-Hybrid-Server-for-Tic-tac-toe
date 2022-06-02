@@ -30,8 +30,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define MESSAGE_SIZE_C 64
-
 
 /*    LISTENER PROCESS                                                         */
 pid_t listener_process(int client_sockfd, bool is_udp,
