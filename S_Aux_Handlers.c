@@ -504,7 +504,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     n_bytes = recvfrom(udp_fd, (void *) client_message, sizeof(client_message), 0,
                                         (struct sockaddr *) &addr, (socklen_t *) &len);
                 }
-                else
+                else 
                 {
                     n_bytes = recv(tcp_fd, (void *) client_message, sizeof(client_message), 0);
                 }
@@ -514,12 +514,12 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     exit(EXIT_FAILURE);
                 }
                 if (n_bytes == 0)
-                {
+                { 
                     printf("\n...Client is not responding!\n"); 
                     write(listener_pipe[1], (void *) Client_down, sizeof(Client_down));
                     exit(EXIT_FAILURE);
-                }
-                client_message[n_bytes + 1] = '\0';
+                }  
+                client_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(client_message, Ping, sizeof(Ping)))
@@ -644,7 +644,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 memset(client_message, 0, sizeof(client_message)); 
                 memset(client_message_copy, 0, sizeof(client_message_copy)); 
                 read(listener_pipe[0], (void *) client_message, sizeof(client_message));
-                if(DEBUG) printf("[client_handler Main] Processador recebeu do listener: %s len: %zu\n", 
+                if(DEBUG) printf("[client_handler Main] Processador recebeu do listener: %s len: %zu\n",
                                     client_message, strlen(client_message));
                 strncpy(client_message_copy, client_message, strlen(client_message));
                 client_message_copy[strlen(client_message)] = '\0';

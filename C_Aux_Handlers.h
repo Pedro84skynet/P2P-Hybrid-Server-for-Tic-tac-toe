@@ -45,7 +45,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
 pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG);
 
 /*    CONNECT PROCEDURE                                                        */
-int Connect_Procedure(bool is_udp, int client_sockfd, 
+int Connect_Procedure(char * ip, bool is_udp, int client_sockfd, 
                         struct sockaddr_in * serv_addr, bool DEBUG);
 
 #endif

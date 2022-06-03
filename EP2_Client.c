@@ -91,8 +91,8 @@ int main(int argc, char ** argv)
                 is_udp = true;
             }
             else if (!strncmp("TCP", argv[i + 1], 3) || 
-                    !strncmp("tcp", argv[i + 1], 3) || 
-                    !strncmp("Tcp", argv[i + 1], 3)) 
+                     !strncmp("tcp", argv[i + 1], 3) || 
+                     !strncmp("Tcp", argv[i + 1], 3)) 
             {
                 is_udp = false;
             }
@@ -112,8 +112,6 @@ int main(int argc, char ** argv)
             i++;
         }
     }
-
-    
 
     /*
         Basic Protocolos. 
@@ -177,7 +175,7 @@ int main(int argc, char ** argv)
     struct pollfd poll_fd[2];
     int ret;
 
-    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG);
+    client_sockfd = Connect_Procedure(ip_addr, is_udp, client_sockfd, &serv_addr, DEBUG);
     if (client_sockfd == -1)
     {
         printf("Error: connection failed!\n");
@@ -617,7 +615,7 @@ int main(int argc, char ** argv)
                 client_sockfd = -1;
                 while (client_sockfd == -1 && try_c < 59)
                 {
-                    client_sockfd = Connect_Procedure(is_udp, client_sockfd, &serv_addr, DEBUG); 
+                    client_sockfd = Connect_Procedure(ip_addr, is_udp, client_sockfd, &serv_addr, DEBUG); 
                     if (!is_udp) sleep(3);
                     try_c++;
                     printf("...attempt %d/60: ", try_c);

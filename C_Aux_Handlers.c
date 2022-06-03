@@ -359,7 +359,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
     return front_end;
 }
 
-int Connect_Procedure(bool is_udp, int client_sockfd, 
+int Connect_Procedure(char * ip, bool is_udp, int client_sockfd, 
                         struct sockaddr_in * serv_addr, bool DEBUG)
 {
     socklen_t len;
@@ -432,7 +432,7 @@ int Connect_Procedure(bool is_udp, int client_sockfd,
                 bzero(serv_addr, sizeof(struct sockaddr_in));
                 (*serv_addr).sin_family = AF_INET;
                 (*serv_addr).sin_port = CHANGE_PORT;
-                (*serv_addr).sin_addr.s_addr = inet_addr("192.168.15.15");
+                (*serv_addr).sin_addr.s_addr = inet_addr(ip);
                 if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1 )
                 {
                     printf("Error: socket not created\n");
