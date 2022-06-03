@@ -36,7 +36,7 @@
 #define NACK_not_logged      "...you need to be logged!"
 #define ACK_hallofame        "********************"
 #define NACK_hallofame       "...hall of fame not available"
-#define ACK_online_l         "...have fun!"
+#define ACK_online_l         "...have_fun!"
 #define NACK_online_l        "...online list not available"
 #define Ping                 "...ping"
 #define Reconnect            "...starting reconnection procedure."

@@ -11,9 +11,10 @@ int insert_user(char * username, char * password);
 int log_user(char * username, char * password, char * new_ip, int new_pipe);
 
 /*    change_data: change a boolean stat or a score info in database
-      int cod == 1 - Add score;
+      int cod == 1 - Add 3 points in score;
       int cod == 2 - Turn off/on online status info;
-      int cod == 3 - Turn off/on "in game" status info;             */
+      int cod == 3 - Turn off/on "in game" status info;
+      int cod == 4 - Add 1 points in score;             */
 int change_data(char *username, int cod, char * new_ip, int new_pipe) ; 
 
 /*    change_pass: change a old password from a given username to a new one.    */

@@ -175,7 +175,7 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         else
         {
             log_event("sending a hall of fame list.");
-            usleep(50000);
+            usleep(100000);
             write(player_rd[this_pipe][1], ACK_hallofame, sizeof(ACK_hallofame));
         }
         return -1;
@@ -191,7 +191,7 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         else
         {
             log_event("sending a online list.");
-            usleep(50000);
+            usleep(100000);
             write(player_rd[this_pipe][1], ACK_online_l, sizeof(ACK_online_l));
         }
         return -1;
@@ -250,11 +250,16 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
 /*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
-        winner = strtok(NULL, " "); 
-        loser = strtok(NULL, " ");
-        if(DEBUG) printf("[Master handler] user %s has quitted\n", winner);
-        sprintf(event,"Game Over: winner: user %s has quitted the game with %s", winner, loser);
+        loser = strtok(NULL, " "); 
+        winner = strtok(NULL, " ");
+        if(DEBUG) printf("[Master handler] user %s has quitted\n", loser);
+        sprintf(event,"Game Over: user %s has quitted the game! winner : %s", loser, winner);
         log_event(event);
+        if(change_data(winner, 1, NULL, 0))
+        {
+            sprintf(event,"Error: Database failed quit game user %s.", token);
+            log_event(event);
+        }
         if(change_data(winner, 3, NULL, 0))
         {
             sprintf(event,"Error: Database failed quit game user %s.", token);
@@ -265,8 +270,9 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
             sprintf(event,"Error: Database failed quit game user %s.", token);
             log_event(event);
         }
+        
         write(player_rd[this_pipe][1], Game_over, sizeof(Game_over));
-        write(player_rd[what_pipe(loser)][1], Game_over, sizeof(Game_over));
+        write(player_rd[what_pipe(winner)][1], Game_over, sizeof(Game_over));
     }
 /*  OUT    ___________________________________________________________________*/
     else if (!strncmp(command, "out", 3)) 
@@ -361,12 +367,22 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         log_event(event);
         if(change_data(winner, 3, NULL, 0))
         {
-            sprintf(event,"Error: Database failed quit game user %s.", token);
+            sprintf(event,"Error: Database failed quit game user %s.", winner);
+            log_event(event);
+        }
+        if(change_data(winner, 4, NULL, 0))
+        {
+            sprintf(event,"Error: Database failed to add score to user %s.", winner);
             log_event(event);
         }
         if(change_data(loser, 3, NULL, 0))
         {
-            sprintf(event,"Error: Database failed quit game user %s.", token);
+            sprintf(event,"Error: Database failed quit game user %s.", loser);
+            log_event(event);
+        }
+        if(change_data(loser, 4, NULL, 0))
+        {
+            sprintf(event,"Error: Database failed to add score to user %s.", loser);
             log_event(event);
         }
         write(player_rd[this_pipe][1], Draw, sizeof(Draw));
@@ -519,7 +535,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     write(listener_pipe[1], (void *) Client_down, sizeof(Client_down));
                     exit(EXIT_FAILURE);
                 }  
-                client_message[n_bytes] = '\0';
+                client_message[strlen(client_message)] = '\0';
                 if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(client_message, Ping, sizeof(Ping)))
@@ -793,7 +809,9 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             {
                 memset(server_message, 0, sizeof(server_message));
                 read(pipe_read, (void *) server_message, sizeof(server_message));
-                if(DEBUG) printf("[client_handler Main] Processador recebeu do main: %s\n", server_message);
+                server_message[strlen(server_message)] = '\0';
+                if(DEBUG) printf("[client_handler Main] Processador recebeu do main: %s len: %zu\n", 
+                                    server_message, strlen(server_message));
             /*  logged  */
                 if (!strncmp(server_message, ACK_in_user, sizeof(ACK_in_user)))
                 {

@@ -106,7 +106,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                         return 0;
                     }
                 }
-                server_message[n_bytes] = '\0';
+                server_message[strlen(server_message)] = '\0';
                 if(DEBUG) printf("[Listener] Listener recebeu do socket: %s\n", server_message);
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(server_message, Ping, sizeof(Ping)))
@@ -318,14 +318,14 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     printf("    Comando inválido ...Digite novamente!\n");
                 }
             }
-            write(front_end_pipe, (void *) user_input, (size_t) strlen(user_input));
+            write(front_end_pipe, (void *) user_input,  strlen(user_input));
             if (need_loop)
             {
                 while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
                        strncmp(server_message, ACK_online_l, sizeof(ACK_online_l))  &&
                        strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged)))
                 {
-                    read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
+                    read(back_end_pipe, (void *) server_message,  sizeof(server_message));
                     if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
                     {
                         printf("\n%s\n", server_message); //End of hall of fame

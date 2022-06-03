@@ -115,7 +115,7 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
             score = atoi(strtok(NULL, " "));
             if (cod == 1)
             {
-                score++;
+                score+=3;
             }
             is_on = atoi(strtok(NULL, " "));
             if (cod == 2) 
@@ -134,6 +134,10 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
             {
                 ip = strtok(NULL, " ");
                 pipe_num = atoi(strtok(NULL, " "));
+            }
+            if (cod == 4)
+            {
+                score++;
             }
             fprintf(fp_new_db,"%s %s %d %d %d %s %d\n", 
                         username, password, score, is_on, in_game, ip, pipe_num);
@@ -342,9 +346,9 @@ int halloffame_sender(int pipe)
         score = strtok(NULL, " ");
         sprintf(line, "%s %s", user, score);
         line[strlen(line)] = '\0';
-        write(pipe, (void *) line, strlen(line));
-        memset((void *)line, 0, 64);
-        usleep(50000);
+        write(pipe, (void *) line, sizeof(line));
+        memset((void *) line, '\0', 64);
+        usleep(10000);
     }
     fclose(fp);
     usleep(50000);
@@ -374,15 +378,17 @@ int l_sender(int pipe)
             if (in_game)
             {
                 sprintf(line, "%s | sim", user);
+                line[strlen(line)] = '\0';
             }
             else
             {
                 sprintf(line, "%s | não", user);
+                line[strlen(line)] = '\0';
             }   
             write(pipe, (void *) line, sizeof(line));
-            usleep(50000);
+            usleep(10000);
         }
-        memset((void *)line, 0, 64);
+        memset((void *)line, 0, sizeof(line));
     }
     fclose(fp);
     usleep(50000);

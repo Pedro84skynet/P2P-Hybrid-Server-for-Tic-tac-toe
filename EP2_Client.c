@@ -151,7 +151,6 @@ int main(int argc, char ** argv)
     clock_t start, end;
     double delay_time[3];
     for (int i = 0; i < 3; i++) delay_time[i] = 0.0f;
-    int c_tick = 0;
 
     pid_t sender, listener, front_end;
 
@@ -282,9 +281,17 @@ int main(int argc, char ** argv)
                             exit(EXIT_FAILURE);
                         }
                         end = clock();
-                        delay_time[c_tick%3] = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
-                        if(DEBUG) printf("Latency: %lf ms\n", delay_time[c_tick%3]);
-                        c_tick++;
+
+                        // saves delay of this turn
+                        float aux = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
+
+                        for (int i = 0; i < 3; i++) {
+                            float tmp = delay_time[i];
+                            delay_time[i] = aux;
+                            aux = tmp;
+                        }
+
+                        if(DEBUG) printf("Latency: %f ms\n", aux);
                         if (hashtable[0] == 0)
                         {
                             if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
