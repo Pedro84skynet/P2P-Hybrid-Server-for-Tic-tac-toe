@@ -252,7 +252,7 @@ int main(int argc, char ** argv)
             {
                 if (in_game)
                 {
-                    write(front_end_pipe[1], (void *) ACK_already_in_game, sizeof(ACK_already_in_game));
+                    write(back_end_pipe[1], (void *) ACK_already_in_game, sizeof(ACK_already_in_game));
                 }
                 else
                 {
@@ -271,9 +271,9 @@ int main(int argc, char ** argv)
         /*  PLAY  */
             else if (!strncmp (client_message, "play", 4))
             {
-                if (in_game)
+                if (!in_game)
                 {
-                    write(front_end_pipe[1], (void *) NACK_already_in_game, sizeof(NACK_already_in_game));
+                    write(back_end_pipe[1], (void *) NACK_already_in_game, sizeof(NACK_already_in_game));
                 }
                 else
                 {
@@ -400,7 +400,7 @@ int main(int argc, char ** argv)
             {
                 if (!in_game)
                 {
-                    write(front_end_pipe[1], (void *) NACK_already_in_game, sizeof(NACK_already_in_game));
+                    write(back_end_pipe[1], (void *) NACK_already_in_game, sizeof(NACK_already_in_game));
                 }
                 else
                 {
