@@ -157,6 +157,11 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         user = strtok(NULL, " ");
         if (is_online(user))
         {
+            if(change_data(user, 5, NULL, this_pipe))
+            {
+                sprintf(event,"Error: Database failed change pipe of user %s.", user);
+                log_event(event);
+            }
             write(player_rd[this_pipe][1], ACK_in_user, sizeof(ACK_in_user));
         }
         else

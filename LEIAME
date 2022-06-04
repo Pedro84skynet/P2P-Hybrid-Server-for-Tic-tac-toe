@@ -4,6 +4,7 @@ EP2 - Primeiro Semestre de 2022
 
 Nome: Daniel Yoshio Hotta
 NUSP: 9922700
+
 Nome: Pedro Fernandes
 NUSP: 5948611
 
@@ -167,6 +168,8 @@ NUSP: 5948611
     - Cooper, M. (2014). Advanced bash scripting guide: An in-depth exploration 
     of the art of shell scripting (Vol. 1). Domínio público, 10 Mar 2014.
     
+    - Stevens, W., 2004. UNIX network programming. Boston: Addison-Wesley.
+    
     - Kurose, J. and Ross, K., 2016. Computer Networking. Harlow, United 
     Kingdom: Pearson Education Canada.
 
@@ -176,7 +179,6 @@ NUSP: 5948611
     Die(Dice):       https://linux.die.net/  
     Fabio Busatto:   https://tldp.org/HOWTO/TCP-Keepalive-HOWTO/programming.html
     Michael Kerrisk: https://man7.org 
-    Oasis:           https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/mqtt-v3.1.1.html 
     Wikipedia:       https://en.wikipedia.org 
     
     

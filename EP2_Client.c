@@ -691,6 +691,7 @@ int main(int argc, char ** argv)
                     */
                     listener  = listener_process(client_sockfd, is_udp, &serv_addr, listener_pipe[1], DEBUG);
                     sender    = sender_process(client_sockfd, is_udp, &serv_addr, sender_pipe[0], DEBUG);
+                    sleep(1);
                     front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
                     if (listener == 0 || sender == 0 || front_end == 0)
                     {
@@ -698,13 +699,14 @@ int main(int argc, char ** argv)
                     } 
                     if (logged)
                     {
+                        
                         memset((void *) processed_message, 0, sizeof(processed_message));
                         sprintf(processed_message, "%s %s", NACK_already_logged, username);
                         processed_message[strlen(processed_message)] = '\0';
                         write(sender_pipe[1], (void *) processed_message, sizeof(processed_message));
                     }
+                    printf("...Back to normal with server!\n");
                 }
-                printf("...Back to normal with server!\n");
             }
         /* Game_over */
             else if (!strncmp(server_message, Game_over, sizeof(Game_over)))

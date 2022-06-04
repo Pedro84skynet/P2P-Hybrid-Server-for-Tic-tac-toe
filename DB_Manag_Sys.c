@@ -125,17 +125,20 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
                     is_on = (is_on == 0) ?  1 :  0;
                     ip = new_ip;
                     pipe_num = new_pipe;
-
                 }
                 in_game = atoi(strtok(NULL, " "));
                 if (cod == 3) 
                 {
                     in_game = (in_game == 0) ?  1 :  0;
                 }
+                if (cod == 5) 
+                {
+                    pipe_num = new_pipe;
+                }
                 if (cod != 2)
                 {
                     ip = strtok(NULL, " ");
-                    pipe_num = atoi(strtok(NULL, " "));
+                    if(cod != 5) pipe_num = atoi(strtok(NULL, " "));
                 }
                 if (cod == 4)
                 {

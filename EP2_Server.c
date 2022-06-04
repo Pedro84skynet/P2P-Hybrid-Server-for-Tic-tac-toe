@@ -312,7 +312,7 @@ int main(int argc, char ** argv)
 
         - Cooper, M. (2014). Advanced bash scripting guide: An in-depth exploration 
         of the art of shell scripting (Vol. 1). Domínio público, 10 Mar 2014.
-        
+        - Stevens, W., 2004. UNIX network programming. Boston: Addison-Wesley.
         - Kurose, J. and Ross, K., 2016. Computer Networking. Harlow, United 
         Kingdom: Pearson Education Canada.
 
