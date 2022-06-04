@@ -207,8 +207,8 @@ int change_pass(char *username, char *old_pass, char *new_pass)
                 ip = strtok(NULL, " ");
                 pipe = strtok(NULL, " ");
                 memset((void*) line, 0, 64);
-                fprintf(fp_new_db,"%s %s %d %d %d %s %s\n", username, new_pass, 
-                            atoi(n_vic), atoi(is_on), atoi(in_game), ip, pipe);
+                fprintf(fp_new_db,"%s %s %d %d %d %s %d\n", username, new_pass, 
+                            atoi(n_vic), atoi(is_on), atoi(in_game), ip, atoi(pipe));
 
             }  
         }  
@@ -216,8 +216,8 @@ int change_pass(char *username, char *old_pass, char *new_pass)
         {
             fprintf(fp_new_db, "%s\n", line);
         }
-        memset((void*) line, 0, (size_t) 64);
-        memset((void*) line_tokenized, 0, (size_t) 64); 
+        memset((void*) line, 0, sizeof(line));
+        memset((void*) line_tokenized, 0, sizeof(line_tokenized)); 
     } 
     if(remove("database.txt"))
     {
