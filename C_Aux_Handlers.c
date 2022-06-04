@@ -45,7 +45,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
 {
     pid_t listener;
     int n_bytes, len, ret; 
-    char server_message[64];
+    char server_message[128];
 
     if ((listener = fork()) == -1)
     {
@@ -80,6 +80,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
             if ((listen_poll_fd[0].revents & POLLIN) && 
                 (listen_poll_fd[0].fd == client_sockfd))
             {
+                memset((void *)server_message, 0, sizeof(server_message));
                 if (is_udp)
                 {
                     n_bytes = recvfrom(client_sockfd, (void *) server_message, sizeof(server_message), 0,
@@ -111,9 +112,8 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(server_message, Ping, sizeof(Ping)))
                 {
-                    write(listener_pipe, (void *) server_message, (size_t) sizeof(server_message));   
+                    write(listener_pipe, (void *) server_message,  sizeof(server_message));   
                 }
-                memset((void *)server_message, 0, sizeof(server_message));
             }
         }
         exit(EXIT_SUCCESS);
@@ -127,7 +127,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
 {
     pid_t sender;
     int n_bytes, len, ret; 
-    char client_message[64];
+    char client_message[128];
     
     if ((sender = fork()) == -1)
     {
@@ -176,8 +176,9 @@ pid_t sender_process(int client_sockfd, bool is_udp,
             if ((sender_poll_fd[0].revents & POLLIN) && 
                 (sender_poll_fd[0].fd = sender_pipe))
             {
-                memset((void *)client_message, 0, sizeof(client_message));
+                memset((void *) client_message, 0, sizeof(client_message));
                 read(sender_pipe, (void *) client_message, sizeof(client_message));
+                client_message[strlen(client_message)] = '\0';
                 if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", client_message);
                 if (strlen(client_message))
                 {
@@ -239,11 +240,12 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     continue;
                 }
                 user_input[strlen(user_input) - 1] = '\0'; 
-                if(DEBUG) printf("[Front-end] Input: %s\n", user_input);
+                if(DEBUG) printf("[Front-end] Input: %s len: %zu\n", user_input, strlen(user_input));
                 strncpy(user_input_copy, user_input, strlen(user_input));
                 user_input_copy[strlen(user_input)] = '\0';
+                if(DEBUG) printf("[Front-end] user_input_copy: %s len: %zu\n", user_input_copy, strlen(user_input_copy));
                 command = strtok(user_input_copy, " ");
-                client_message[strlen(client_message) - 1] = '\0';
+                if(DEBUG) printf("[Front-end] command: %s len: %zu\n", command, strlen(command));
             /*  NEW    ___________________________________________________________________*/
                 if (!strncmp(command, "new", 4)) 
                 {
@@ -307,9 +309,8 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                 else if (!strncmp(command, "bye", 4)) 
                 { 
                     invalid_command = false;
-                    write(front_end_pipe, (void *) user_input, (size_t) strlen(user_input));
+                    write(front_end_pipe, (void *) user_input, sizeof(user_input));
                     printf ("Ending the game... Good bye!\n");
-                    sleep (2);
                     return 0;
                 } 
             /*  ELSE    __________________________________________________________________*/
@@ -318,37 +319,52 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     printf("    Comando inválido ...Digite novamente!\n");
                 }
             }
-            write(front_end_pipe, (void *) user_input,  strlen(user_input));
+            write(front_end_pipe, (void *) user_input,  sizeof(user_input));
             if (need_loop)
             {
-                while (strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
+                int udp_safe = 256;
+                while (need_loop &&
+                       strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
                        strncmp(server_message, ACK_online_l, sizeof(ACK_online_l))  &&
                        strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged)))
                 {
+                    memset((void *) server_message, 0, sizeof(server_message));
                     read(back_end_pipe, (void *) server_message,  sizeof(server_message));
-                    if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
+                    server_message[strlen(server_message)] = '\0';
+                    if(DEBUG) printf ("[Front-end] server_message: %s len: %zu\n", 
+                                        server_message, strlen(server_message));
+                    if (strlen(server_message) != 0)
                     {
-                        printf("\n%s\n", server_message); //End of hall of fame
-                    }
-                    else if (!strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
-                    {
-                        printf("                        %s\n", server_message); //End of list
+                        if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
+                        {
+                            printf("\n%s\n", server_message); //End of hall of fame
+                        }
+                        else if (!strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
+                        {
+                            printf("                        %s\n", server_message); //End of list
+                        }
+                        else
+                        {
+                            printf("    %s\n", server_message); //Normal Case 
+                        } 
                     }
                     else
                     {
-                        printf("    %s\n", server_message); //Normal Case
-                    } 
+                        udp_safe--;
+                        if (udp_safe == 0) need_loop = false;
+                    }
                 } 
                 need_loop = false;
             }
             else
-            {
-                read(back_end_pipe, (void *) server_message, (size_t) sizeof(server_message));
-                printf("    %s\n", server_message);
-            }
             /*
                 resposta servidor
             */
+            {
+                read(back_end_pipe, (void *) server_message, sizeof(server_message));
+                server_message[strlen(server_message)] = '\0';
+                printf("    %s\n", server_message);
+            }
             memset((void *) user_input, 0, sizeof(user_input));
             memset((void *) server_message, 0, sizeof(server_message));
             invalid_command = true;

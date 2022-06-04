@@ -59,14 +59,14 @@ void handler_close(int sig)
 int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int this_pipe)
 {
     if(DEBUG) printf("[Master handler] receive: %s\n", client_message);
-    unsigned char client_message_copy[64];
-    unsigned char processed_message[128];
+    unsigned char client_message_copy[128];
+    unsigned char processed_message[256];
     unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
     unsigned char * ip, *ip_p1, *ip_p2; 
     int pipe_num;
     unsigned char * winner, * loser; 
     char event[128];
-    
+    client_message[strlen(client_message)] = '\0';
     strncpy(client_message_copy, client_message, strlen(client_message));
     client_message_copy[strlen(client_message)] = '\0';
     command = strtok(client_message_copy, " ");
@@ -205,6 +205,7 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         {
             sprintf(event,"sending call to %s from %s.", user, token);
             log_event(event);
+            memset((void *) processed_message, 0, sizeof(processed_message));
             sprintf(processed_message, "%s %s", client_message, what_ip(token));
             processed_message[strlen(processed_message)] = '\0';
             write(player_rd[what_pipe(user)][1], processed_message, strlen(processed_message));
@@ -250,8 +251,8 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
 /*  OVER    __________________________________________________________________*/
     else if (!strncmp(command, "over", 4)) 
     {
-        loser = strtok(NULL, " "); 
-        winner = strtok(NULL, " ");
+        winner = strtok(NULL, " "); 
+        loser = strtok(NULL, " ");
         if(DEBUG) printf("[Master handler] user %s has quitted\n", loser);
         sprintf(event,"Game Over: user %s has quitted the game! winner : %s", loser, winner);
         log_event(event);
@@ -271,7 +272,7 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
             log_event(event);
         }
         
-        write(player_rd[this_pipe][1], Game_over, sizeof(Game_over));
+        write(player_rd[this_pipe][1], You_lose, sizeof(You_lose));
         write(player_rd[what_pipe(winner)][1], Game_over, sizeof(Game_over));
     }
 /*  OUT    ___________________________________________________________________*/
@@ -349,16 +350,14 @@ int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int
         free(ip_p1);
         free(ip_p2);
     } 
-/*  Game_over    ______________________________________________________________*/
 /*  Draw    ___________________________________________________________________*/
-    else if ((!strncmp(command, Game_over, sizeof(Game_over))) ||
-             (!strncmp(command, Draw, sizeof(Draw)))) 
+    else if (!strncmp(command, Draw, sizeof(Draw))) 
     {
         winner = strtok(NULL, " ");
         winner[strlen(winner)] = '\0';
         loser = strtok(NULL, " ");
         loser[strlen(loser)] = '\0';
-        ip_p1 = what_ip(user); 
+        ip_p1 = what_ip(winner); 
         ip_p2 = what_ip(loser);
         if(DEBUG) printf("[Master handler] draw between %s (ip: %s) and %s (ip: %s)\n", 
                             winner, ip_p1, loser, ip_p2);
@@ -422,8 +421,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
     int ret, ACK_NACK;
     bool logged = false;
 
-    unsigned char client_message[64]; 
-    unsigned char server_message[64]; 
+    unsigned char client_message[128]; 
+    unsigned char server_message[128]; 
 
     struct pollfd poll_fd[2];
     int timeout = 3*60*1000; //milésimos
@@ -541,7 +540,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 if (strncmp(client_message, Ping, sizeof(Ping)))
                 {   
                     if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
-                    write(listener_pipe[1], (void *) client_message, strlen(client_message));
+                    write(listener_pipe[1], (void *) client_message, sizeof(client_message));
                 } 
             }
         }
@@ -635,7 +634,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
         close(udp_fd);
         // Auxiliars
         unsigned char client_message_copy[64], username[32];
-        unsigned char client_message_processed[128], server_message_processed[128];
+        unsigned char client_message_processed[256], server_message_processed[128];
         unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
 
         while(1) 
@@ -660,6 +659,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 memset(client_message, 0, sizeof(client_message)); 
                 memset(client_message_copy, 0, sizeof(client_message_copy)); 
                 read(listener_pipe[0], (void *) client_message, sizeof(client_message));
+                client_message[strlen(client_message)] = '\0';
                 if(DEBUG) printf("[client_handler Main] Processador recebeu do listener: %s len: %zu\n",
                                     client_message, strlen(client_message));
                 strncpy(client_message_copy, client_message, strlen(client_message));
@@ -675,7 +675,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     memset(username, 0, sizeof(username)); 
                     strncpy(username, user, strlen(user));
                     username[strlen(user)] = '\0';
-                    write(pipe_write, (void *) client_message, strlen(client_message)); 
+                    if(DEBUG) printf("[client_handler Main]  %s username: %s\n", NACK_already_logged, username);
+                    write(pipe_write, (void *) client_message, sizeof(client_message)); 
                     read(pipe_read, (void *) server_message, sizeof(server_message));
                     server_message[strlen(server_message)] = '\0';
                     command = strtok(server_message, " ");
@@ -696,30 +697,22 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 {
                     if (logged)
                     {
+                        if(DEBUG) printf("[client_handler Main]  %s username: %s\n", NACK_already_logged, username);
                         write(sender_pipe[1], (void *) NACK_already_logged, sizeof(NACK_already_logged));
                     }
                     else 
                     {
-                        printf("    client_message: %s len: %zu\n", client_message, strlen(client_message));
                         user = strtok(NULL, " "); 
                         if(DEBUG) printf("[client_handler Main] user:%s len: %zu\n", user, strlen(user));
                         memset(username, 0, sizeof(username)); 
-                        printf("    client_message: %s len: %zu\n", client_message, strlen(client_message));
                         strncpy(username, user, strlen(user));
-                        printf("    client_message: %s len: %zu\n", client_message, strlen(client_message));
                         username[strlen(user)] = '\0';
                         if(DEBUG) printf("[client_handler Main] username: %s len %zu\n", username, strlen(username));
                         memset(client_message_processed, 0, sizeof(client_message_processed)); 
-                        printf("    client_message: %s len: %zu\n", client_message, strlen(client_message));
-                        printf("    ip: %s len: %zu\n", ip, strlen(ip));
-                        printf("    pipe_num: %d\n", pipe_num);
                         sprintf(client_message_processed, "%s %s %d", client_message, ip, pipe_num); 
-                        printf("    client_message: %s len: %zu\n", client_message, strlen(client_message));
-                        printf("    ip: %s len: %zu\n", ip, strlen(ip));
-                        printf("    pipe_num: %d\n", pipe_num);
                         client_message_processed[strlen(client_message_processed)] = '\0';
-                        if(DEBUG) printf("[client_handler Main] client_message_processed: %s\n", client_message_processed);
-                        if(DEBUG) printf("writing on pipe_write\n");
+                        if(DEBUG) printf("[client_handler Main] client_message_processed: %s len: %zu\n",
+                                            client_message_processed, strlen(client_message_processed));
                         write(pipe_write, (void *) client_message_processed, strlen(client_message_processed));
                     }
                 }
@@ -729,7 +722,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             /*  Must concatenate request with username before send to master.                         */
                 else if (!strncmp(command, "pass", 4) ||
                          !strncmp(command, "call", 4) || 
-                         !strncmp(command, "out" , 3)) 
+                         !strncmp(command, "out" , 3) ||
+                         !strncmp(command, "over", 4)) 
                 {
                     if(logged) 
                     {
@@ -743,7 +737,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     } 
                     else
                     { 
-                        write(sender_pipe[1], (void *) NACK_not_logged, (size_t) sizeof(NACK_not_logged));
+                        write(sender_pipe[1], (void *) NACK_not_logged, sizeof(NACK_not_logged));
                     }
                 }
                 else if (!strncmp(command, Client_down , sizeof(Client_down)))
@@ -768,17 +762,18 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 {
                     if(logged) 
                     {
+                        memset(client_message_processed, 0, sizeof(client_message_processed));
                         sprintf(client_message_processed, "%s %s", client_message, username); 
                         client_message_processed[strlen(client_message_processed)] = '\0';
                         write(pipe_write, (void *) client_message_processed, 
-                                (size_t) strlen(client_message_processed));
-                        memset(client_message_processed, 0, sizeof(client_message_processed));
+                                    strlen(client_message_processed));
                         logged = false;
                     }
-                    write(sender_pipe[1], (void *) ACK_bye_user, (size_t) sizeof(ACK_bye_user));
-                    sleep (1);
+                    write(sender_pipe[1], (void *) ACK_bye_user, sizeof(ACK_bye_user));
+                    sleep (3);
                     kill (sender, SIGKILL);
                     kill (listener, SIGKILL);
+                    sleep (1);
                     return 0;
                 }
             /*  L           */
@@ -789,16 +784,16 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 {
                     if(logged) 
                     {
-                        write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
+                        write(pipe_write, (void *) client_message, sizeof(client_message));
                     }
                     else
                     {
-                        write(sender_pipe[1], (void *) NACK_not_logged, (size_t) sizeof(NACK_not_logged));
+                        write(sender_pipe[1], (void *) NACK_not_logged, sizeof(NACK_not_logged));
                     }
                 }
                 else
                 {
-                    write(pipe_write, (void *) client_message, (size_t) sizeof(client_message));
+                    write(pipe_write, (void *) client_message, sizeof(client_message));
                 }
             }
 

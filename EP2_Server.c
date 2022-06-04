@@ -147,7 +147,7 @@ int main(int argc, char ** argv)
 
     socklen_t len;
     ssize_t nbytes; 
-    unsigned char client_message[64];
+    unsigned char client_message[128];
 
     fd[0].fd = udp_fd;
     fd[0].events = POLLIN;
@@ -296,8 +296,12 @@ int main(int argc, char ** argv)
                 memset(client_message, 0, sizeof(client_message));
                 if(DEBUG) printf("[Main Process] poll: pipe do Player %d!\n", i);
                 read(player_wr[i][0], client_message, sizeof(client_message));
+                client_message[strlen(client_message)] = '\0';
                 if(DEBUG) printf("[Main Process] read from player%i_wr[0]: %s\n", i, client_message);
-                master_handler(player_rd, client_message, DEBUG, i); 
+                if (client_message != NULL)
+                {
+                    master_handler(player_rd, client_message, DEBUG, i); 
+                }
             } 
         }
     }

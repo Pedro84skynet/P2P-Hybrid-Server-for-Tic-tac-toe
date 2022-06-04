@@ -109,7 +109,7 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
         line[strlen(line) - 1] = '\0'; 
         strncpy(line_tokenized, line, strlen(line));
         token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username) + 1))
+        if (!strncmp(token, username, strlen(username)))
         {
             password = strtok(NULL, " ");
             score = atoi(strtok(NULL, " "));
@@ -347,7 +347,8 @@ int halloffame_sender(int pipe)
         sprintf(line, "%s %s", user, score);
         line[strlen(line)] = '\0';
         write(pipe, (void *) line, sizeof(line));
-        memset((void *) line, '\0', 64);
+        printf("halloffame_sender: line: %s len: %zu\n",line, strlen(line));
+        memset((void *) line, 0, sizeof(line));
         usleep(10000);
     }
     fclose(fp);
