@@ -63,8 +63,9 @@ int main(int argc, char ** argv)
     sigaction(SIGTERM, &sig2, NULL);
     
     uint16_t port = (uint16_t) atoi(argv[1]);
-    uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 1)%60535 + 5000;
-
+    uint16_t aux_udp_port = (uint16_t) (atoi(argv[1]) + 128)%65407;
+    if(aux_udp_port < 5000) aux_udp_port = 5000;
+    
     for (int i = 0; i < argc; i++)
     {
         if (!strncmp(argv[i], "-d", 2) || !strncmp(argv[i], "-D", 2))

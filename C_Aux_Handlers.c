@@ -441,7 +441,7 @@ int Connect_Procedure(char * ip, bool is_udp, int client_sockfd,
             }
             if (ACK_NACK == 1)
             {
-                printf("    Alcançou o servidor.\n");
+                printf("    Alcançou o servidor!\n");
             }
             else
             {
@@ -498,7 +498,7 @@ int Connect_Procedure(char * ip, bool is_udp, int client_sockfd,
         }
         if (ACK_NACK == 1)
         {
-            printf("    Alcançou o servidor.\n");
+            printf("    Alcançou o servidor!\n");
             return client_sockfd;
         }
     }

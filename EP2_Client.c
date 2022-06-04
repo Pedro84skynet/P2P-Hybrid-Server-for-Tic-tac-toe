@@ -271,120 +271,128 @@ int main(int argc, char ** argv)
         /*  PLAY  */
             else if (!strncmp (client_message, "play", 4))
             {
-                command = strtok(client_message, " ");
-                line = atoi(strtok(NULL, " "));
-                column = atoi(strtok(NULL, " "));
-                if (game_end == 0 && tie > 0) 
+                if (in_game)
                 {
-                    if (is_player1) hashtable = hash_game(hashtable, 'X', line, column);
-                    else hashtable = hash_game(hashtable, 'O', line, column);
-                    if (send(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
-                    {
-                        printf("Error: sending failed");
-                        exit(EXIT_FAILURE);
-                    }
-                    start = clock();
-                    tie--;
-                    print_hash_table(hashtable);
-                    game_end = hash_winner(hashtable);
-                    if(DEBUG) printf("[Main process] game_end: %d tie:  %d\n", game_end, tie);
-                    kill(front_end, SIGKILL);
-                    waitpid(front_end, &status, 0);
-                    if (game_end == 0 && tie > 0)
-                    {
-                        if (recv(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
-                        {
-                            printf("Error: receive failed\n");
-                            exit(EXIT_FAILURE);
-                        }
-                        end = clock();
-
-                        // saves delay of this turn
-                        float aux = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
-
-                        for (int i = 0; i < 3; i++) {
-                            float tmp = delay_time[i];
-                            delay_time[i] = aux;
-                            aux = tmp;
-                        }
-
-                        if(DEBUG) printf("Latency: %f ms\n", aux);
-                        if (hashtable[0] == 0)
-                        {
-                            if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
-                            write(sender_pipe[1], (void *) Game_over, sizeof(Game_over));
-                        }
-                        print_hash_table(hashtable);
-                        game_end = hash_winner(hashtable);
-                    }
-                } 
-                if (is_player1)
-                {
-                    if (game_end || tie <= 0)
-                    {
-                        if (game_end == 'X') 
-                        {
-                            // printf("\n\nVocê Venceu!\n\n"); 
-                            memset((void *) processed_message, 0, sizeof(processed_message));
-                            sprintf(processed_message, "%s %s %s", I_win, username, othername);
-                            if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
-                            processed_message[strlen(processed_message)] = '\0';
-                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
-                        }
-                        // if (game_end == 'O') printf("\n\nVocê Perdeu!\n\n");
-                        if (!game_end && tie <= 0) 
-                        {
-                            // printf("\n\nEmpate!\n\n");
-                            memset((void *) processed_message, 0, sizeof(processed_message));
-                            sprintf(processed_message, "%s %s %s", Draw, username, othername);
-                            if(DEBUG) printf("[Main process] draw processed_message: %s!\n", processed_message);
-                            processed_message[strlen(processed_message)] = '\0';
-                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
-                        }
-                        game_on = false;
-                        game_end = 0;
-                        tie = 5;
-                        free(hashtable);
-                        read(listener_pipe[0], (void *) server_message, sizeof(server_message));
-                        server_message[strlen(server_message)] = '\0';
-                        printf("    %s\n\n", server_message);
-                        is_player1 = false;
-                        close(player_fd);
-                        p2p_port++;
-                        in_game = false;
-                    }   
+                    write(front_end_pipe[1], (void *) NACK_already_in_game, sizeof(NACK_already_in_game));
                 }
                 else
                 {
-                    if (game_end || tie <= 1)
+                
+                    command = strtok(client_message, " ");
+                    line = atoi(strtok(NULL, " "));
+                    column = atoi(strtok(NULL, " "));
+                    if (game_end == 0 && tie > 0) 
                     {
-                        if (game_end == 'O') 
+                        if (is_player1) hashtable = hash_game(hashtable, 'X', line, column);
+                        else hashtable = hash_game(hashtable, 'O', line, column);
+                        if (send(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
                         {
-                            //printf("\n\nVocê Venceu!\n\n");
-                            memset((void *) processed_message, 0, sizeof(processed_message));
-                            sprintf(processed_message, "%s %s %s",I_win, username, othername);
-                            if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
-                            processed_message[strlen(processed_message)] = '\0';
-                            write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                            printf("Error: sending failed");
+                            exit(EXIT_FAILURE);
                         }
-                        // if (game_end == 'X') printf("\n\nVocê Perdeu!\n\n");
-                        // if (!game_end && tie < 1) printf("\n\nEmpate!\n\n");
-                        game_on = false;
-                        game_end = 0;
-                        tie = 5;
-                        free(hashtable);
-                        read(listener_pipe[0], (void *) server_message, sizeof(server_message));
-                        server_message[strlen(server_message)] = '\0';
-                        printf("    %s\n\n", server_message);
-                        close(player_fd);
-                        p2p_port++;
-                        in_game = false;
+                        start = clock();
+                        tie--;
+                        print_hash_table(hashtable);
+                        game_end = hash_winner(hashtable);
+                        if(DEBUG) printf("[Main process] game_end: %d tie:  %d\n", game_end, tie);
+                        kill(front_end, SIGKILL);
+                        waitpid(front_end, &status, 0);
+                        if (game_end == 0 && tie > 0)
+                        {
+                            if (recv(player_fd, (void *) hashtable, sizeof(char)*9, 0) == -1) 
+                            {
+                                printf("Error: receive failed\n");
+                                exit(EXIT_FAILURE);
+                            }
+                            end = clock();
+
+                            // saves delay of this turn
+                            float aux = ((double) (end - start)*1000) / CLOCKS_PER_SEC;
+
+                            for (int i = 0; i < 3; i++) {
+                                float tmp = delay_time[i];
+                                delay_time[i] = aux;
+                                aux = tmp;
+                            }
+
+                            if(DEBUG) printf("Latency: %f ms\n", aux);
+                            if (hashtable[0] == 0)
+                            {
+                                if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
+                                write(sender_pipe[1], (void *) Game_over, sizeof(Game_over));
+                            }
+                            print_hash_table(hashtable);
+                            game_end = hash_winner(hashtable);
+                        }
+                    } 
+                    if (is_player1)
+                    {
+                        if (game_end || tie <= 0)
+                        {
+                            if (game_end == 'X') 
+                            {
+                                // printf("\n\nVocê Venceu!\n\n"); 
+                                memset((void *) processed_message, 0, sizeof(processed_message));
+                                sprintf(processed_message, "%s %s %s", I_win, username, othername);
+                                if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
+                                processed_message[strlen(processed_message)] = '\0';
+                                write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                            }
+                            // if (game_end == 'O') printf("\n\nVocê Perdeu!\n\n");
+                            if (!game_end && tie <= 0) 
+                            {
+                                // printf("\n\nEmpate!\n\n");
+                                memset((void *) processed_message, 0, sizeof(processed_message));
+                                sprintf(processed_message, "%s %s %s", Draw, username, othername);
+                                if(DEBUG) printf("[Main process] draw processed_message: %s!\n", processed_message);
+                                processed_message[strlen(processed_message)] = '\0';
+                                write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                            }
+                            game_on = false;
+                            game_end = 0;
+                            tie = 5;
+                            free(hashtable);
+                            read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+                            server_message[strlen(server_message)] = '\0';
+                            printf("    %s\n\n", server_message);
+                            is_player1 = false;
+                            close(player_fd);
+                            p2p_port++;
+                            in_game = false;
+                        }   
                     }
-                }
-                front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
-                if (front_end == 0)
-                {
-                    return 0; 
+                    else
+                    {
+                        if (game_end || tie <= 1)
+                        {
+                            if (game_end == 'O') 
+                            {
+                                //printf("\n\nVocê Venceu!\n\n");
+                                memset((void *) processed_message, 0, sizeof(processed_message));
+                                sprintf(processed_message, "%s %s %s",I_win, username, othername);
+                                if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
+                                processed_message[strlen(processed_message)] = '\0';
+                                write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
+                            }
+                            // if (game_end == 'X') printf("\n\nVocê Perdeu!\n\n");
+                            // if (!game_end && tie < 1) printf("\n\nEmpate!\n\n");
+                            game_on = false;
+                            game_end = 0;
+                            tie = 5;
+                            free(hashtable);
+                            read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+                            server_message[strlen(server_message)] = '\0';
+                            printf("    %s\n\n", server_message);
+                            close(player_fd);
+                            p2p_port++;
+                            in_game = false;
+                        }
+                    }
+                    front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
+                    if (front_end == 0)
+                    {
+                        return 0; 
+                    }
                 }
             }
          /*  OVER  */
