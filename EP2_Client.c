@@ -313,7 +313,6 @@ int main(int argc, char ** argv)
                         {
                             if(DEBUG) printf("[Main process] over hashtable[0] == 0!\n");
                             write(sender_pipe[1], (void *) Game_over, sizeof(Game_over));
-                            continue;
                         }
                         print_hash_table(hashtable);
                         game_end = hash_winner(hashtable);
@@ -385,7 +384,7 @@ int main(int argc, char ** argv)
                 front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
                 if (front_end == 0)
                 {
-                    return 0;
+                    return 0; 
                 }
             }
          /*  OVER  */
@@ -398,6 +397,7 @@ int main(int argc, char ** argv)
                 else
                 {
                     in_game = false;
+                    is_player1 = false;
                     hashtable[0] = 0;
                     if (send(player_fd, (void *) hashtable, sizeof(char)*1, 0) == -1) 
                     {
@@ -458,9 +458,12 @@ int main(int argc, char ** argv)
             if (!strncmp (server_message, "call", 4))
             {
                 command = strtok(server_message, " "); 
-                user_name = strtok(NULL, " "); 
-                other_name = strtok(NULL, " ");
-                strncpy(othername, other_name, sizeof(other_name));
+                user_name = strtok(NULL, " ");  
+                other_name = strtok(NULL, " "); 
+                strncpy(othername, other_name, strlen(other_name));
+                othername[strlen(other_name)] = '\0';
+                if(DEBUG) printf("[Main process] othername: %s len: %zu\n", 
+                        othername, strlen(othername));
                 other_ip = strtok(NULL, " ");
                 if(DEBUG) printf("[Main process] other_ip: %s\n", other_ip);
                 kill(front_end, SIGKILL);
@@ -604,7 +607,7 @@ int main(int argc, char ** argv)
                         return 0;
                     }
                     sleep(1);
-                    write(back_end_pipe[1], (void *) ACK_accept, (size_t) sizeof(ACK_accept));
+                    write(back_end_pipe[1], (void *) ACK_accept, sizeof(ACK_accept));
                 }
             }
         /*  call rejected  or not online*/
@@ -618,7 +621,6 @@ int main(int argc, char ** argv)
                     return 0;
                 }
                 sleep(1);
-                //write(back_end_pipe[1], (void *) NACK_accept, sizeof(NACK_accept));
             }
         /*  Not online*/
             else if (!strncmp (server_message, NACK_online, sizeof(NACK_online)))
@@ -635,7 +637,7 @@ int main(int argc, char ** argv)
             else if (!strncmp (server_message, Server_down, sizeof(Server_down)))
             {
                 printf("\n%s\n", server_message);
-                write (back_end_pipe[1], (void *) server_message, sizeof(server_message));
+                write (back_end_pipe[1], (void *) server_message, strlen(server_message));
                 kill (sender, SIGKILL);
                 kill (listener, SIGKILL);
                 sleep (2);
@@ -708,6 +710,7 @@ int main(int argc, char ** argv)
             else if (!strncmp(server_message, Game_over, sizeof(Game_over)))
             {
                 in_game = false;
+                is_player1 = false;
                 printf("    ...%s has left!\n", othername);
                 printf("    ...W.O. you win!\n");
                 front_end = front_end_process(back_end_pipe[0], front_end_pipe[1], DEBUG); 
@@ -727,7 +730,7 @@ int main(int argc, char ** argv)
                 {
                     logged = false;
                 }
-                write(back_end_pipe[1], (void *) server_message, sizeof(server_message));
+                write(back_end_pipe[1], (void *) server_message, strlen(server_message));
                 memset((void *) server_message, 0, sizeof(server_message));
                 usleep(50000);
             }

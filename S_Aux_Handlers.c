@@ -422,7 +422,9 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
     bool logged = false;
 
     unsigned char client_message[128]; 
+    memset((void *) client_message, 0, sizeof(client_message));
     unsigned char server_message[128]; 
+    memset((void *) server_message, 0, sizeof(server_message));
 
     struct pollfd poll_fd[2];
     int timeout = 3*60*1000; //milésimos
@@ -535,7 +537,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     exit(EXIT_FAILURE);
                 }  
                 client_message[strlen(client_message)] = '\0';
-                if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
+                if(DEBUG) printf("[Listener] recebeu do socket: %s len: %zu\n", 
+                                client_message, strlen(client_message));
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(client_message, Ping, sizeof(Ping)))
                 {   
@@ -606,7 +609,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             if ((sender_poll_fd[0].revents & POLLIN) &&
                 (sender_poll_fd[0].fd == sender_pipe[0]))
             {
-                read(sender_pipe[0], (void *) server_message, (size_t) sizeof(server_message));
+                memset((void *)server_message, 0, sizeof(server_message));
+                read(sender_pipe[0], (void *) server_message, sizeof(server_message));
                 if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", server_message);
                 if (is_udp)
                 {
@@ -624,7 +628,6 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 }
                 if(DEBUG) printf("[Sender]   .... Sender enviou mensagem para Cliente\n");
                 if(DEBUG) printf("[Sender]    n_bytes: %d\n", (int) n_bytes);
-                memset((void *)server_message, 0, sizeof(server_message));
             }
         }
         exit(EXIT_SUCCESS);

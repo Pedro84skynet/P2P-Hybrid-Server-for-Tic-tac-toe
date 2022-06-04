@@ -116,7 +116,7 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                 }
             }
         }
-        exit(EXIT_SUCCESS);
+        return 0;
     }
     return listener;
 }
@@ -206,7 +206,7 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                 }
             }
         }
-        exit(EXIT_SUCCESS);
+        return 0;
     }
     return sender;
 }
@@ -219,6 +219,9 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
     char other_player_name[64];
     char * command, * player2;
     bool logged = false;
+    struct pollfd pfd[1];
+    int timeout = 5*1000; // 5 segundos para um loop
+
 
     if ((front_end = fork()) == -1)
     {
@@ -322,39 +325,48 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
             write(front_end_pipe, (void *) user_input,  sizeof(user_input));
             if (need_loop)
             {
-                int udp_safe = 256;
+                pfd[0].fd = back_end_pipe;
+                pfd[0].events = POLLIN;
+
                 while (need_loop &&
                        strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)) &&
-                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l))  &&
+                       strncmp(server_message, ACK_online_l, sizeof(ACK_online_l))   &&
                        strncmp(server_message, NACK_not_logged, sizeof(NACK_not_logged)))
                 {
-                    memset((void *) server_message, 0, sizeof(server_message));
-                    read(back_end_pipe, (void *) server_message,  sizeof(server_message));
-                    server_message[strlen(server_message)] = '\0';
-                    if(DEBUG) printf ("[Front-end] server_message: %s len: %zu\n", 
-                                        server_message, strlen(server_message));
-                    if (strlen(server_message) != 0)
+                    ret = poll(pfd, 1, timeout);
+                    if (ret == -1)
                     {
-                        if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
-                        {
-                            printf("\n%s\n", server_message); //End of hall of fame
-                        }
-                        else if (!strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
-                        {
-                            printf("                        %s\n", server_message); //End of list
-                        }
-                        else
-                        {
-                            printf("    %s\n", server_message); //Normal Case 
-                        } 
+                        printf("Error: poll front-end failed!\n");
                     }
-                    else
+                    if (ret == 0)
                     {
-                        udp_safe--;
-                        if (udp_safe == 0) need_loop = false;
+                        need_loop = false;
                     }
+                    if ((pfd[0].revents & POLLIN) && pfd[0].fd == back_end_pipe)
+                    {
+                        memset((void *) server_message, 0, sizeof(server_message));
+                        n_bytes = read(back_end_pipe, (void *) server_message,  sizeof(server_message));
+                        server_message[strlen(server_message)] = '\0';
+                        if(DEBUG) printf ("[Front-end] server_message: %s len: %zu, n_bytes: %u\n", 
+                                            server_message, strlen(server_message), n_bytes);
+                        if (n_bytes != 0)
+                        {
+                            if (!strncmp(server_message, ACK_hallofame, sizeof(ACK_hallofame)))
+                            {
+                                printf("\n%s\n", server_message); //End of hall of fame
+                            }
+                            else if (!strncmp(server_message, ACK_online_l, sizeof(ACK_online_l)))
+                            {
+                                printf("                        %s\n", server_message); //End of list
+                            }
+                            else
+                            {
+                                printf("    %s\n", server_message); //Normal Case 
+                            } 
+                        }
+                    } 
                 } 
-                need_loop = false;
+                need_loop = false;           
             }
             else
             /*
@@ -370,7 +382,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
             invalid_command = true;
             need_loop = false;
         }
-        exit(EXIT_SUCCESS);
+        return 0;
     }
     return front_end;
 }

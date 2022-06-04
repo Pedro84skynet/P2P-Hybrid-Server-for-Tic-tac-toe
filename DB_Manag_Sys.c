@@ -106,48 +106,51 @@ int change_data(char *username, int cod, char * new_ip, int new_pipe)
     fp_new_db = fopen("prov_database.txt", "a");
     while (fgets(line, 64, fp_db))
     {
-        line[strlen(line) - 1] = '\0'; 
-        strncpy(line_tokenized, line, strlen(line));
-        token = strtok(line_tokenized, " ");
-        if (!strncmp(token, username, strlen(username)))
+        if (strlen(line) > 2)
         {
-            password = strtok(NULL, " ");
-            score = atoi(strtok(NULL, " "));
-            if (cod == 1)
+            line[strlen(line) - 1] = '\0'; 
+            strncpy(line_tokenized, line, strlen(line));
+            token = strtok(line_tokenized, " ");
+            if (!strncmp(token, username, strlen(username)))
             {
-                score+=3;
-            }
-            is_on = atoi(strtok(NULL, " "));
-            if (cod == 2) 
-            {
-                is_on = (is_on == 0) ?  1 :  0;
-                ip = new_ip;
-                pipe_num = new_pipe;
+                password = strtok(NULL, " ");
+                score = atoi(strtok(NULL, " "));
+                if (cod == 1)
+                {
+                    score+=3;
+                }
+                is_on = atoi(strtok(NULL, " "));
+                if (cod == 2) 
+                {
+                    is_on = (is_on == 0) ?  1 :  0;
+                    ip = new_ip;
+                    pipe_num = new_pipe;
 
-            }
-            in_game = atoi(strtok(NULL, " "));
-            if (cod == 3) 
+                }
+                in_game = atoi(strtok(NULL, " "));
+                if (cod == 3) 
+                {
+                    in_game = (in_game == 0) ?  1 :  0;
+                }
+                if (cod != 2)
+                {
+                    ip = strtok(NULL, " ");
+                    pipe_num = atoi(strtok(NULL, " "));
+                }
+                if (cod == 4)
+                {
+                    score++;
+                }
+                fprintf(fp_new_db,"%s %s %d %d %d %s %d\n", 
+                            username, password, score, is_on, in_game, ip, pipe_num);
+            } 
+            else
             {
-                in_game = (in_game == 0) ?  1 :  0;
+                fprintf(fp_new_db, "%s\n", line);
             }
-            if (cod != 2)
-            {
-                ip = strtok(NULL, " ");
-                pipe_num = atoi(strtok(NULL, " "));
-            }
-            if (cod == 4)
-            {
-                score++;
-            }
-            fprintf(fp_new_db,"%s %s %d %d %d %s %d\n", 
-                        username, password, score, is_on, in_game, ip, pipe_num);
-        } 
-        else
-        {
-            fprintf(fp_new_db, "%s\n", line);
+            memset((void*) line, 0, 64);
+            memset((void*) line_tokenized, 0, 64);
         }
-        memset((void*) line, 0, 64);
-        memset((void*) line_tokenized, 0, 64);
     }
     fclose(fp_db);
     fclose(fp_new_db);
@@ -347,7 +350,6 @@ int halloffame_sender(int pipe)
         sprintf(line, "%s %s", user, score);
         line[strlen(line)] = '\0';
         write(pipe, (void *) line, sizeof(line));
-        printf("halloffame_sender: line: %s len: %zu\n",line, strlen(line));
         memset((void *) line, 0, sizeof(line));
         usleep(10000);
     }
