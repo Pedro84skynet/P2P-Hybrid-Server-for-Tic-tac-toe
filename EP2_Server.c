@@ -87,7 +87,7 @@ int main(int argc, char ** argv)
     int player_wr[128][2];
     int player_rd[128][2];
 
-
+    ssize_t n_bytes;
     int listen_fd, tcp_fd, udp_fd; 
     int mh_return;
     int max_clients = 2;
@@ -296,8 +296,8 @@ int main(int argc, char ** argv)
                 processo do servidor referente a player 1*/
                 memset(client_message, 0, sizeof(client_message));
                 if(DEBUG) printf("[Main Process] poll: pipe do Player %d!\n", i);
-                read(player_wr[i][0], client_message, sizeof(client_message));
-                client_message[strlen(client_message)] = '\0';
+                n_bytes = read(player_wr[i][0], client_message, sizeof(client_message));
+                client_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Main Process] read from player%i_wr[0]: %s\n", i, client_message);
                 if (client_message != NULL)
                 {

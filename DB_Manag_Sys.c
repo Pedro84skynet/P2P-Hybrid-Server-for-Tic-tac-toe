@@ -228,7 +228,7 @@ int change_pass(char *username, char *old_pass, char *new_pass)
     } 
     if(rename("prov_database.txt", "database.txt") == 0)
     {
-        sprintf(event, "change_pass: Arquivo %s  atualizado.\n", "database.txt");
+        sprintf(event, "change_pass: Arquivo %s  atualizado.", "database.txt");
         log_event(event);
         fclose(fp_db);
         fclose(fp_new_db);
@@ -237,7 +237,7 @@ int change_pass(char *username, char *old_pass, char *new_pass)
     else
     {
         printf("Erro: arquivo %s não atualizado.\n", "database.txt");
-        sprintf(event, "Erro: arquivo %s não atualizado.\n", "database.txt");
+        sprintf(event, "Erro: arquivo %s não atualizado.", "database.txt");
         log_event(event);
         fclose(fp_db);
         fclose(fp_new_db);
@@ -350,11 +350,11 @@ int halloffame_sender(int pipe)
         user = strtok(line, " ");
         pass = strtok(NULL, " ");
         score = strtok(NULL, " ");
-        sprintf(line, "%s %s", user, score);
+        sprintf(line, "%s %s\n", user, score);
         line[strlen(line)] = '\0';
-        write(pipe, (void *) line, sizeof(line));
+        write(pipe, (void *) line, strlen(line));
         memset((void *) line, 0, sizeof(line));
-        usleep(10000);
+        usleep(40000);
     }
     fclose(fp);
     usleep(50000);
@@ -363,7 +363,7 @@ int halloffame_sender(int pipe)
 
 int l_sender(int pipe) 
 {
-    FILE * fp;
+    FILE * fp; 
     char line[64];
     char *user, *pass, *n_vic;
     int is_on, in_game;
@@ -383,16 +383,16 @@ int l_sender(int pipe)
         {
             if (in_game)
             {
-                sprintf(line, "%s | sim", user);
+                sprintf(line, "%s | sim\n", user);
                 line[strlen(line)] = '\0';
             }
             else
             {
-                sprintf(line, "%s | não", user);
+                sprintf(line, "%s | não\n", user);
                 line[strlen(line)] = '\0';
             }   
             write(pipe, (void *) line, sizeof(line));
-            usleep(10000);
+            usleep(40000);
         }
         memset((void *)line, 0, sizeof(line));
     }

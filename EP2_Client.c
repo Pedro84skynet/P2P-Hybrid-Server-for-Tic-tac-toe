@@ -58,7 +58,7 @@ int main(int argc, char ** argv)
     uint16_t port, p2p_port;
     bool is_udp;
     char ip_addr[16];
-    int status;       
+    int status;     
 
     /*
         Process input terminal initial arguments.
@@ -216,7 +216,6 @@ int main(int argc, char ** argv)
             exit(EXIT_FAILURE);
         }
 
-
     /*  ________________________________________________________________________________________________
         FRONT_END_PIPE
         Processa mensagem do front-end, return processed_message;
@@ -224,14 +223,15 @@ int main(int argc, char ** argv)
     */
         if ((poll_fd[0].revents == POLLIN) && (poll_fd[0].fd == front_end_pipe[0]))
         {
-            read(front_end_pipe[0], (void *) client_message, sizeof(client_message));
-            client_message[strlen(client_message)] = '\0';
+            n_bytes = read(front_end_pipe[0], (void *) client_message, sizeof(client_message));
+            client_message[n_bytes] = '\0';
             if(DEBUG) printf("[Main process] Main recebeu do front_end: %s\n", client_message);
+            if(DEBUG) printf("[Main process] ...n_bytes: %zu\n", n_bytes);
         /*  BYE  */
             if (!strncmp (client_message, "bye", 3)) 
             {
                 printf("Bye command ...exiting!\n");
-                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                write(sender_pipe[1], (void *) client_message, strlen(client_message));
                 // closing pipes
                 close(client_sockfd);
                 close(listener_pipe[0]); close(listener_pipe[1]);
@@ -264,7 +264,7 @@ int main(int argc, char ** argv)
                     strncpy(othername, other_name, strlen(other_name));
                     othername[strlen(other_name)] = '\0';
                     if(DEBUG) printf("[Main process] othername: %s\n", othername);
-                    write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                    write(sender_pipe[1], (void *) client_message, strlen(client_message));
                     usleep(50000);
                 }
             }
@@ -380,8 +380,8 @@ int main(int argc, char ** argv)
                             game_end = 0;
                             tie = 5;
                             free(hashtable);
-                            read(listener_pipe[0], (void *) server_message, sizeof(server_message));
-                            server_message[strlen(server_message)] = '\0';
+                            n_bytes = read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+                            server_message[n_bytes] = '\0';
                             printf("    %s\n\n", server_message);
                             close(player_fd);
                             p2p_port++;
@@ -429,9 +429,9 @@ int main(int argc, char ** argv)
                 user_name  = strtok(NULL, " ");
                 strncpy(username, user_name, strlen(user_name));
                 username[strlen(user_name)] = '\0';
-                if(DEBUG) printf("[Main process] victory processed_message: %s!\n", processed_message);
-                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
-                usleep(50000);
+                if(DEBUG) printf("[Main process] username: %s!\n", username);
+                write(sender_pipe[1], (void *) client_message, strlen(client_message));
+                usleep(25000);
             }
         /*  DELAY  */
             else if (!strncmp (client_message, "delay", 5))
@@ -443,7 +443,7 @@ int main(int argc, char ** argv)
 
             else 
             {
-                write(sender_pipe[1], (void *) client_message, sizeof(client_message));
+                write(sender_pipe[1], (void *) client_message, strlen(client_message));
                 usleep(50000);
             }
         }
@@ -457,8 +457,8 @@ int main(int argc, char ** argv)
         if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == listener_pipe[0]))
         {
             memset((void *) server_message, 0, sizeof(server_message));
-            read(listener_pipe[0], (void *) server_message, sizeof(server_message));
-            server_message[strlen(server_message)] = '\0';
+            n_bytes = read(listener_pipe[0], (void *) server_message, sizeof(server_message));
+            server_message[n_bytes] = '\0';
             if(DEBUG) printf("[Main process] Main recebeu do listener: %s\n", server_message);
         
         /*  Specials Cases*/
@@ -487,7 +487,7 @@ int main(int argc, char ** argv)
                     processed_message[strlen(processed_message)] = '\0';
                     if(DEBUG) printf("[Main process] call processed %s len: %zu\n", processed_message,
                                         strlen(processed_message));
-                    write(sender_pipe[1], (void *) processed_message, sizeof(processed_message));
+                    write(sender_pipe[1], (void *) processed_message, strlen(processed_message));
                     memset((void *)&own_addr, 0, sizeof(own_addr));
                     own_addr.sin_family = AF_INET;
                     own_addr.sin_port = htons(p2p_port);

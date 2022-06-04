@@ -59,6 +59,7 @@ void handler_close(int sig)
 int master_handler(int player_rd[128][2], char * client_message, bool DEBUG, int this_pipe)
 {
     if(DEBUG) printf("[Master handler] receive: %s\n", client_message);
+    ssize_t n_bytes;
     unsigned char client_message_copy[128];
     unsigned char processed_message[256];
     unsigned char * user, * pass, * command, * token, * old_pass, * new_pass;
@@ -541,14 +542,14 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     write(listener_pipe[1], (void *) Client_down, sizeof(Client_down));
                     exit(EXIT_FAILURE);
                 }  
-                client_message[strlen(client_message)] = '\0';
+                client_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Listener] recebeu do socket: %s len: %zu\n", 
                                 client_message, strlen(client_message));
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(client_message, Ping, sizeof(Ping)))
                 {   
                     if(DEBUG) printf("[Listener] recebeu do socket: %s\n", client_message);
-                    write(listener_pipe[1], (void *) client_message, sizeof(client_message));
+                    write(listener_pipe[1], (void *) client_message, strlen(client_message));
                 } 
             }
         }
@@ -615,7 +616,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 (sender_poll_fd[0].fd == sender_pipe[0]))
             {
                 memset((void *)server_message, 0, sizeof(server_message));
-                read(sender_pipe[0], (void *) server_message, sizeof(server_message));
+                n_bytes = read(sender_pipe[0], (void *) server_message, sizeof(server_message));
+                server_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", server_message);
                 if (is_udp)
                 {
@@ -666,8 +668,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             {
                 memset(client_message, 0, sizeof(client_message)); 
                 memset(client_message_copy, 0, sizeof(client_message_copy)); 
-                read(listener_pipe[0], (void *) client_message, sizeof(client_message));
-                client_message[strlen(client_message)] = '\0';
+                n_bytes = read(listener_pipe[0], (void *) client_message, sizeof(client_message));
+                client_message[n_bytes] = '\0';
                 if(DEBUG) printf("[client_handler Main] Processador recebeu do listener: %s len: %zu\n",
                                     client_message, strlen(client_message));
                 strncpy(client_message_copy, client_message, strlen(client_message));
@@ -685,8 +687,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                     username[strlen(user)] = '\0';
                     if(DEBUG) printf("[client_handler Main]  %s username: %s\n", NACK_already_logged, username);
                     write(pipe_write, (void *) client_message, sizeof(client_message)); 
-                    read(pipe_read, (void *) server_message, sizeof(server_message));
-                    server_message[strlen(server_message)] = '\0';
+                    n_bytes = read(pipe_read, (void *) server_message, sizeof(server_message));
+                    server_message[n_bytes] = '\0';
                     command = strtok(server_message, " ");
                     if (!strncmp(command, ACK_in_user, sizeof(ACK_in_user)))
                     {
@@ -792,7 +794,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 {
                     if(logged) 
                     {
-                        write(pipe_write, (void *) client_message, sizeof(client_message));
+                        write(pipe_write, (void *) client_message, strlen(client_message));
                     }
                     else
                     {
@@ -801,7 +803,7 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 }
                 else
                 {
-                    write(pipe_write, (void *) client_message, sizeof(client_message));
+                    write(pipe_write, (void *) client_message, strlen(client_message));
                 }
             }
 
@@ -811,8 +813,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
             else if ((poll_fd[1].revents == POLLIN) && (poll_fd[1].fd == pipe_read))
             {
                 memset(server_message, 0, sizeof(server_message));
-                read(pipe_read, (void *) server_message, sizeof(server_message));
-                server_message[strlen(server_message)] = '\0';
+                n_bytes = read(pipe_read, (void *) server_message, sizeof(server_message));
+                server_message[n_bytes] = '\0';
                 if(DEBUG) printf("[client_handler Main] Processador recebeu do main: %s len: %zu\n", 
                                     server_message, strlen(server_message));
             /*  logged  */
@@ -824,7 +826,8 @@ int client_handler(char * ip, bool is_udp, int pipe_read, int pipe_write,
                 {
                     logged = false;
                 }
-                write(sender_pipe[1], (void *) server_message, sizeof(server_message));
+                write(sender_pipe[1], (void *) server_message, strlen(server_message));
+                usleep(10000);
             }
         }
     }  

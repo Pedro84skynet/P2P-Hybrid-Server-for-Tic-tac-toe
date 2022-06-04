@@ -107,12 +107,13 @@ pid_t listener_process(int client_sockfd, bool is_udp,
                         return 0;
                     }
                 }
-                server_message[strlen(server_message)] = '\0';
+                server_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Listener] Listener recebeu do socket: %s\n", server_message);
                 if(DEBUG) printf("[Listener]    n_bytes: %d\n", (int) n_bytes);
                 if (strncmp(server_message, Ping, sizeof(Ping)))
                 {
-                    write(listener_pipe, (void *) server_message,  sizeof(server_message));   
+                    write(listener_pipe, (void *) server_message,  strlen(server_message));
+                    usleep(50000);   
                 }
             }
         }
@@ -177,8 +178,8 @@ pid_t sender_process(int client_sockfd, bool is_udp,
                 (sender_poll_fd[0].fd = sender_pipe))
             {
                 memset((void *) client_message, 0, sizeof(client_message));
-                read(sender_pipe, (void *) client_message, sizeof(client_message));
-                client_message[strlen(client_message)] = '\0';
+                n_bytes = read(sender_pipe, (void *) client_message, sizeof(client_message));
+                client_message[n_bytes] = '\0';
                 if(DEBUG) printf("[Sender] Sender recebeu do pipe: %s\n", client_message);
                 if (strlen(client_message))
                 {
@@ -312,7 +313,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                 else if (!strncmp(command, "bye", 4)) 
                 { 
                     invalid_command = false;
-                    write(front_end_pipe, (void *) user_input, sizeof(user_input));
+                    write(front_end_pipe, (void *) user_input, strlen(user_input));
                     printf ("Ending the game... Good bye!\n");
                     return 0;
                 } 
@@ -322,7 +323,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     printf("    Comando inválido ...Digite novamente!\n");
                 }
             }
-            write(front_end_pipe, (void *) user_input,  sizeof(user_input));
+            write(front_end_pipe, (void *) user_input,  strlen(user_input));
             if (need_loop)
             {
                 pfd[0].fd = back_end_pipe;
@@ -346,7 +347,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                     {
                         memset((void *) server_message, 0, sizeof(server_message));
                         n_bytes = read(back_end_pipe, (void *) server_message,  sizeof(server_message));
-                        server_message[strlen(server_message)] = '\0';
+                        server_message[n_bytes] = '\0';
                         if(DEBUG) printf ("[Front-end] server_message: %s len: %zu, n_bytes: %u\n", 
                                             server_message, strlen(server_message), n_bytes);
                         if (n_bytes != 0)
@@ -361,7 +362,7 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                             }
                             else
                             {
-                                printf("    %s\n", server_message); //Normal Case 
+                                printf("    %s", server_message); //Normal Case 
                             } 
                         }
                     } 
@@ -373,8 +374,8 @@ pid_t front_end_process(int back_end_pipe, int front_end_pipe, bool DEBUG)
                 resposta servidor
             */
             {
-                read(back_end_pipe, (void *) server_message, sizeof(server_message));
-                server_message[strlen(server_message)] = '\0';
+                n_bytes = read(back_end_pipe, (void *) server_message, sizeof(server_message));
+                server_message[n_bytes] = '\0';
                 printf("    %s\n", server_message);
             }
             memset((void *) user_input, 0, sizeof(user_input));
